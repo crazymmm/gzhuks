@@ -1,0 +1,27 @@
+/**
+ * register
+ */
+Vue.http.options.emulateJSON = true;
+new Vue({
+	el:"body",
+	data:{
+		username:"",
+		password:""
+	},
+	created:function(){
+		
+	},
+	methods:{
+		login:function(){
+			this.$http.post("/application/login",{
+				
+			}).then(function(data){
+				if(data.body.result){
+					
+				}else{
+					
+				}
+			})
+		}
+	}
+})

@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="renderer" content="webkit">
+    <!-- //360 6.X 以上可识别 -->
+    <meta name="force-rendering" content="webkit">
+    <!-- //其他双核可识别 -->
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+    <meta name="keywords" content="CMS，免费，自定义">
+    <meta name="description" content="CMS开源项目 免费自定义">
+    <script language="javascript">  
+    /* 判断当前页面是否在iframe中  */
+   if(top == self){window.top.location.href = "/admin"}  
+    </script>  
+    <!-- Bootstrap 3.3.6 -->
+    <link rel="stylesheet" href="/css/bootstrap.min.css">
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="/css/font-awesome.min.css">
+    <!-- Theme style -->
+    <link rel="stylesheet" href="/css/common_css/AdminLTE.min.css">
+
+    <link href="/css/plugins/cropper/cropper.min.css" rel="stylesheet">
+
+    <!-- vue.js -->
+    <script src="/js/vue/vue.min.js"></script>
+    <script src="/js/vue/vue-resource.min.js"></script>
+  
+</head>
+
+<body>
+    <div class="col-md-12">
+        <div class="nav-tabs-custom">
+            <ul class="nav nav-tabs">
+                <li class="active"><a href="#activity" data-toggle="tab">本地上传</a></li>
+                <li><a href="#timeline" data-toggle="tab">资源库选取</a></li>
+                <li><a href="#settings" data-toggle="tab">设置</a></li>
+            </ul>
+            <div class="tab-content">
+                <div class="active tab-pane" id="activity">
+
+
+                </div>
+                <!-- /.tab-pane -->
+                <div class="tab-pane" id="timeline">
+                    <!-- The timeline -->
+                    <ul class="timeline timeline-inverse">
+                        <!-- timeline time label -->
+                        <li class="time-label">
+                            <span class="bg-red">
+                          10 12月. 2015
+                        </span>
+                        </li>
+                        <!-- /.timeline-label -->
+                        <!-- timeline item -->
+                        <li>
+                            <i class="fa fa-envelope bg-blue"></i>
+
+                            <div class="timeline-item">
+                                <span class="time"><i class="fa fa-clock-o"></i> 12:05</span>
+
+                                <h3 class="timeline-header"><a href="#">老 司机</a> 发给你一封邮件</h3>
+
+                                <div class="timeline-body">
+                                    久闻公之大名，今日有幸相会,今晚开上你的五菱宏光,我们去秋明山比比车技...
+                                </div>
+                                <div class="timeline-footer">
+                                    <a class="btn btn-primary btn-xs">阅读 更多</a>
+                                    <a class="btn btn-danger btn-xs">删除</a>
+                                </div>
+                            </div>
+                        </li>
+                        <!-- END timeline item -->
+                        <!-- timeline item -->
+                        <li>
+                            <i class="fa fa-user bg-aqua"></i>
+
+                            <div class="timeline-item">
+                                <span class="time"><i class="fa fa-clock-o"></i> 5 分钟 前</span>
+
+                                <h3 class="timeline-header no-border"><a href="#">天线宝宝 拉拉</a> 接收了你的朋友请求
+                      </h3>
+                            </div>
+                        </li>
+                        <!-- END timeline item -->
+                        <!-- timeline item -->
+                        <li>
+                            <i class="fa fa-comments bg-yellow"></i>
+
+                            <div class="timeline-item">
+                                <span class="time"><i class="fa fa-clock-o"></i> 27 分钟 前</span>
+
+                                <h3 class="timeline-header"><a href="#">沃德 天</a> 对你的文章发表了评论</h3>
+
+                                <div class="timeline-body">
+                                    以前虽然穷，但开心。 现在不同了，现在不止穷，还不开心。
+                                </div>
+                                <div class="timeline-footer">
+                                    <a class="btn btn-warning btn-flat btn-xs">查看评论</a>
+                                </div>
+                            </div>
+                        </li>
+                        <!-- END timeline item -->
+                        <!-- timeline time label -->
+                        <li class="time-label">
+                            <span class="bg-green">
+                          3 Jan. 2014
+                        </span>
+                        </li>
+                        <!-- /.timeline-label -->
+                        <!-- timeline item -->
+                        <li>
+                            <i class="fa fa-camera bg-purple"></i>
+
+                            <div class="timeline-item">
+                                <span class="time"><i class="fa fa-clock-o"></i> 2 days ago</span>
+
+                                <h3 class="timeline-header"><a href="#">冠西哥</a> 上传了 新照片</h3>
+
+                                <div class="timeline-body">
+                                    <img src="/img/p2.jpg" alt="..." class="margin">
+                                    <img src="/img/p1.jpg" alt="..." class="margin">
+                                    <img src="/img/p3.jpg" alt="..." class="margin">
+                                    <img src="/img/p_big1.jpg" alt="..." class="margin">
+                                </div>
+                            </div>
+                        </li>
+                        <!-- END timeline item -->
+                        <li>
+                            <i class="fa fa-clock-o bg-gray"></i>
+                        </li>
+                    </ul>
+                </div>
+                <!-- /.tab-pane -->
+
+                <div class="tab-pane" id="settings">
+                    <div class="form-horizontal">
+                        <div class="form-group">
+                            <label for="inputEducation" class="col-sm-2 control-label">教育</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="inputEducation" v-model="inputEducation" placeholder="毕业院校">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="inputLocation" class="col-sm-2 control-label">位置</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="inputLocation" v-model="inputLocation" placeholder="当前所在位置">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="inputSkills" class="col-sm-2 control-label">擅长</label>
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="inputSkills" v-model="inputSkills" placeholder="按逗号隔开">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label for="inputSignName" class="col-sm-2 control-label">签名</label>
+
+                            <div class="col-sm-10">
+                                <input type="text" class="form-control" id="inputSignName" v-model="inputSignName" placeholder="编辑你的个性签名">
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <div class="col-sm-offset-2 col-sm-10">
+                                <button class="btn btn-danger" @click="editUserinfo">提交</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <!-- /.tab-pane -->
+            </div>
+            <!-- /.tab-content -->
+        </div>
+        <!-- /.nav-tabs-custom -->
+    </div>
+    <!-- jQuery 2.2.3 -->
+    <script src="/js/common_js/jquery-2.1.1.min.js"></script>
+    <!-- Bootstrap 3.3.6 -->
+    <script src="/js/common_js/bootstrap.min.js"></script>
+
+
+    <!-- 自定义js -->
+    <script src="/js/view_js/usermgr/index.js"></script>
+
+
+   
+</body>
+
+</html>

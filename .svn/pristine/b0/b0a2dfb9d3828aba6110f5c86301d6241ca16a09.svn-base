@@ -1,0 +1,18 @@
+/**
+ * 
+ */
+Vue.http.options.emulateJSON = true;
+new Vue({
+	el:"body",
+	data:{
+		isCheckAll:false,
+		artList:[],
+		totalrows:0
+	},
+	created:function(){
+
+	},
+	methods:{
+	
+	}
+})

@@ -1,0 +1,78 @@
+/**
+ * 
+ */
+Vue.http.options.emulateJSON = true;
+new Vue({
+	el:"body",
+	data:{
+		isCheckAll:false,
+		artList:[],
+		totalrows:0
+	},
+	created:function(){
+	  	var ue = UE.getEditor( 'editor', {
+			//false出现滚动条
+	        autoFloatEnabled: false,
+	        autoHeightEnabled: false,
+	        wordCount: false,
+	        autotypeset: {
+	            removeEmptyline: true
+	        },
+	        initialFrameHeight: 300
+	    });
+	  	this.getArticle();
+	},
+	methods:{
+		checkedAll:function(){
+			for(var i=0;i < this.artList.length;i++){
+				this.artList[i].check = !this.isCheckAll
+			}
+		},
+		getArticle:function(){
+			  this.$http.post('/admin/index/getArticle',{}).then( function(data) {
+				  /* 判断执行是否 成功 */
+				  if(data.body.result){
+					  toastr.success("获取数据成功");
+					  this.artList = data.body.msg
+					  this.totalrows = this.artList.length
+				  }else{
+					  toastr.error(data.body.msg);
+				  }
+			  })
+		},
+		createArticle:function(){
+	    	  if($("input[name='name']").val().length == 0 || $("input[name='name']").val().length > 30){
+	    		  toastr.error("标题长度为1至30个字符内");
+	    		  return
+	    	  }
+	    	  if($("input[name='keyword']").val().length > 100){
+	    		  toastr.error("关键字要大小于100");
+	    		  return
+	    	  }
+			  if(UE.getEditor('editor').getContent() == ""){
+				  toastr.warning("请填写文章内容");
+				  return
+			  }
+            this.$http.post("/admin/index/createArticle", {
+            	name: $("input[name='name']").val(),
+            	content:$.trim(UE.getEditor('editor').getContent()),
+            	keyword:$("input[name='keyword']").val(),
+            	type:$("#artType").val()
+            }).then(function (data) {
+                if (data.body.result) {
+					swal({
+						title : "操作成功!",
+						text :  "文章已创建",
+						confirmButtonText : "确认",
+						type : "success",
+						timer : 1000
+					});
+					$("#modal-form").modal('hide');
+					this.getArticle()
+                } else {
+                    toastr.error(data.body.msg);
+                }
+            })
+		}
+	}
+})

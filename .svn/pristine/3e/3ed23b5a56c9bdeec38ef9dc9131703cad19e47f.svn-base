@@ -1,0 +1,126 @@
+<?php
+namespace Admin\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Admin\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class IndexController extends BaseController
+{
+    const ROUTE_INDEX  = 'admin/index';
+    
+    /**
+     * 后台主页左侧数据
+     * {@inheritDoc}
+     * @see \Zend\Mvc\Controller\AbstractActionController::indexAction()
+     */
+    public function indexAction()
+    {
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId)){
+                return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+            }
+            /*获取用户头像等信息*/
+            $userModel = new User($this->getDbAdapter());
+            $userRet = $userModel->selectUserById($userId);
+            if(!$userRet['result'] || count($userRet['msg']) == 0){
+                return new JsonModel(array("result"=>false,'msg'=>"用户不存在"));
+            }
+            
+            return array(
+                'user'=>$userRet["msg"][0]['username'],
+                'role'=>"管理员",
+                'headpic' =>"/data/avatarResource/common/default.jpg"
+            );
+            
+        }catch (\Exception $e) {
+            $response = $this->getResponse();
+            $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/500.html");
+            $response->setStatusCode(302);
+            return $response;//重定向到500页面
+        }
+    }
+    
+    public function homeAction(){
+        try {
+            
+            $view = new ViewModel();
+            return $view;
+            
+        }catch (\Exception $e) {
+            $response = $this->getResponse();
+            $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/500.html");
+            $response->setStatusCode(302);
+            return $response;//重定向到500页面
+        }
+    }
+    
+    
+    /**
+     * 注册界面
+     * @return \Zend\View\Model\ViewModel
+     */
+    public function registerAction()
+    {
+        /*查看用户是否登录*/
+        $user_session = new Container('user');
+        $userId = $user_session->userId;
+        $userName = $user_session->userName;
+        if(isset($userId)){
+            header("X-Frame-Options: deny");  
+            header("X-XSS-Protection: 0");  
+            header("Location: http://" . $_SERVER['HTTP_HOST']);
+            exit;
+        }
+        else{
+            /* 实例化模型 */
+            $view = new ViewModel();
+            return $view;
+        }
+    }
+    public function logoutAction(){
+        try {
+            $user_session = new Container('user');
+            $user_session->getManager()->getStorage()->clear('user');
+            unset($_SESSION['user']);
+            header("X-Frame-Options: deny");
+            header("X-XSS-Protection: 0");
+            header("Location: http://" . $_SERVER['HTTP_HOST']);
+            exit;
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+ /**
+  * 查看课程列表
+  */
+   public function checkcourseAction(){
+       try {
+           $user_session = new Container('user');
+          $user = new User($this->getDbAdapter());
+          $userRet = $user->selectAuthority($user_session);
+          if($userRet['result']==true&&$userRet['msg'][0] ["flag"]==1){
+              $courseRet = $user->selectCourse('all');  
+              return new JsonModel($courseRet);
+          }elseif($userRet['result']==true&&$userRet['msg'][0] ["flag"]==0){
+              $courseRet = $user->selectCourse($user_session);   
+              return new JsonModel($courseRet);
+          }
+          else{
+              return new JsonModel (array("result" => false, "msg" =>"获取数据操作失败，请刷新页面重试"));
+          }
+         
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }
+       
+   }
+    
+}

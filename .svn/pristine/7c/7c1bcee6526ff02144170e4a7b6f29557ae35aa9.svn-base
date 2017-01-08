@@ -1,0 +1,31 @@
+<?php
+namespace Usermgr\Model;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseTableModel;
+use Zend\View\Model\JsonModel;
+
+class UserRole extends BaseTableModel
+{
+    /**
+     * 初始化
+     * @param Adapter
+      $adapter
+     */
+    public function __construct(Adapter $adapter){
+        $this->adapter = $adapter;
+    }
+    
+    public function getPermissionByRouterUrl($url){
+       $arr = array('url'=>'%'.$url.'%');
+       $sql = "select NAV_ID id from nx_nav_list where ROUTER_URL like :url limit 1";
+       return $this->sqlexec($sql,$arr);
+    }
+    
+    public function getButtonPermissonList($navid,$user){
+       $sql = "select m.FUNCTION_ID id,m.BUTTON_KEY btnkey,n.P_ID pid from nx_nav_function_list m 
+                left join nx_func_and_role n on ( m.FUNCTION_ID = n.FUNCTION_ID and n.ROLE_ID = (select ROLE_ID from nx_user_info where USER_ID = :user limit 1)) 
+                where m.NAV_ID = :nav";
+       return $this->sqlexec($sql,array('user'=>$user,'nav'=>$navid));
+    }
+}

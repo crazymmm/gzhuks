@@ -1,0 +1,27 @@
+<?php
+namespace Admin\Model;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseTableModel;
+use Zend\View\Model\JsonModel;
+
+class User extends BaseTableModel
+{
+    /**
+     * 初始化
+     * @param Adapter
+      $adapter
+     */
+    public function __construct(Adapter $adapter){
+        $this->adapter = $adapter;
+    }
+
+    public function selectUser($username){
+        $sql = "select * from user where username = :username limit 1";
+        return $this->sqlexec($sql,array("username"=>$username));
+    }
+    public function registerUser($username,$password){
+        $sql = "insert into user(username,password) values(:username,:password)";
+        return $this->sqlexec($sql,array("username"=>$username,"password"=>$password));
+    }
+}

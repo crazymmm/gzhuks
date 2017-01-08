@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<script language="javascript">  
+/* 判断当前页面是否在iframe中  */
+if(top == self){window.top.location.href = "/admin"}  
+</script>  
+<title>添加用户</title>
+<meta name="keywords" content="">
+<meta name="description" content="">
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/nxcms/ui.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+</head>
+<body class="gray-bg">
+	<div class="wrapper wrapper-content animated fadeInRight">
+		<div class="row">
+			<div class="col-sm-10 col-sm-offset-1">
+				<div class="ibox float-e-margins">
+					<div class="ibox-title">
+						<h5>添加用户</h5>
+						<div class="ibox-tools">
+						 	<a @click="reset"> <i class="fa fa-history"></i></a>
+						</div>
+					</div>
+					<div class="ibox-content">
+						<form class="form-horizontal m-t" id="signupForm" @submit.prevent="addUser" role="form">
+							<div class="form-group">
+								<label class="col-sm-3 control-label">头像：</label>
+								<div class="col-sm-8">
+									<ul class="icon-image">
+										<li data-toggle="tooltip" data-placement="bottom" title="图片大小不超过4M">
+											<a>
+												<img class="avatar" src="/data/avatarResource/common/default.jpg" onerror="javascript:this.src='/data/avatarResource/common/default.jpg'">
+											</a>
+											<div class="tools tools-bottom">
+												<a>
+													<i class="fa fa-pencil"><input class="wsfile avatarfile" type="file" name="avatarfile" id="avatar" accept="image/*"></i>
+												</a>
+											</div>
+										</li>
+									</ul>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-3 control-label">昵称：</label>
+								<div class="col-sm-8">
+									<input id="username" name="username" class="form-control" type="text">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-3 control-label">用户邮箱：</label>
+								<div class="col-sm-8">
+									<input id="email" name="email" class="form-control" type="email" required>
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-3 control-label">密码：</label>
+								<div class="col-sm-8">
+									<input id="password" name="password" class="form-control" type="password">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-3 control-label">确认密码：</label>
+								<div class="col-sm-8">
+									<input id="confirm_password" name="confirm_password" class="form-control" type="password">
+								</div>
+							</div>
+							<div class="form-group">
+								<label class="col-sm-3 control-label">角色：</label>
+								<div class="col-sm-8">
+									<select id="role" class="form-control m-b" name="role">
+										<option v-bind:value="role.ROLE_ID" v-for="role in roleList" v-text="role.ROLE_NAME_CH+'(级别:'+role.ROLE_LEVEL+')'" v-if="myLev>role.ROLE_LEVEL"></option>
+									</select>
+								</div>
+							</div>
+							<div class="form-group">
+								<div class="col-sm-8 col-sm-offset-3">
+									<button class="btn btn-primary submit" type="submit">提交</button>
+								</div>
+							</div>
+						</form>
+					</div>
+				</div>
+			</div>
+		</div>
+	</div>
+	<!-- 全局js -->
+	<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+	<script src="/js/common_js/bootstrap.min.js"></script>
+	<script src="/js/plugins/validate/jquery.validate.min.js"></script>
+	<script src="/js/plugins/validate/messages_zh.min.js"></script>
+	<!-- vue.js -->
+	<script src="/js/vue/vue.min.js"></script>
+	<script src="/js/vue/vue-resource.min.js"></script>
+	<script src="/js/plugins/toastr/toastr.min.js"></script>
+	<!--自定义js-->
+	<script src="/js/view_js/usermgr/add.js"></script>
+</body>
+</html>

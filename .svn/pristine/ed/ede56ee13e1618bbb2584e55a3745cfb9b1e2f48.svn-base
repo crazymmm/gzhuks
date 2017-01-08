@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+<script> 
+/* 判断当前页面是否在iframe中  */
+if(self==top){window.location="/admin";}
+</script>
+<title>用户列表</title>
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<link href="/css/ui.css" rel="stylesheet">
+<link href="/css/common_css/sweetalert.css" rel="stylesheet">
+<style>
+    /* 页面闪烁 */
+    [v-cloak]{display:none;}
+</style>
+</head>
+    <body class="gray-bg" v-cloak>
+        <div class="wrapper wrapper-content animated fadeIn">
+            <div class="row">
+                <div class="col-sm-12">
+                    <div class="ibox float-e-margins">
+                      <button type="button" class="btn btn-sm btn-primary" @click="getAllUser"><i class="fa fa-refresh"></i> 刷新</button>&nbsp;
+                      <button type="button" class="btn btn-sm btn-primary" @click="addUser('')"><i class="fa fa-pencil"></i> 添加用户</button>
+
+                        <div class="ibox-title">
+                            <h5>用户一览</h5>
+                            <div class="ibox-tools">
+                                <a>
+                                    <i class="fa fa-plus"></i>
+                                </a>
+                                <a>
+                                    <i class="fa fa-refresh fa-spin"></i>
+                                </a>
+                            </div>
+                        </div>
+                        <div class="ibox-content">
+                              <div class="form-group form-inline">
+                                  <div class="input-group col-sm-3 m-b-xs pull-left">
+                                    <select class="input-sm form-control">
+                                          <option value="0">请选择批量操作</option>
+                                          <option value="1">快速编辑</option>
+                                          <option value="2">永久删除</option>
+                                    </select>
+                                    <div class="input-group-btn">
+                                        <button type="button" class="btn btn-sm btn-info" @click=Operate()>应用操作</button>
+                                    </div>
+                                  </div>
+                                  <div class="pull-right">
+                                     <div class="input-group" style="margin:0 4px">
+                                        <input class="input-sm form-control" placeholder="搜索名称,别名等" v-model="searchInfo.name"></input>
+                                        <div class="input-group-btn">
+                                            <button type="button" class="btn btn-sm btn-primary" @click="getArticle">搜索</button>
+                                        </div>
+                                     </div>
+                                  </div>
+                              </div>
+                            <table class="table table-striped table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th class="check-mail">
+                                            <input type="checkbox" v-model="isCheckAll" id="all">
+										    <label class="wcheck" for="all" @click='checkedAll'></label>
+                                        </th>
+                                        <th>昵称</th>
+                                        <th width="110">邮箱</th>
+                                        <th width="110">头像</th>
+                                        <th width="110">课程数</th>
+                                        <th width="110">角色</th>
+                                        <th width="100">操作</th>
+                                    </tr>
+                                </thead>                          
+                                   <tbody  id="article">
+                                    <tr v-if="userList.length == 0">
+                                        <td colspan="6" align="center">没有符合条件的数据</td>
+                                    </tr>
+                                    <tr class="gradeX" v-for='cou in userList'>
+                                        <td class="check-mail">
+                                            <input type="checkbox"  v-model="cou.check" id="{{cou.u_id}}">
+										    <label class="wcheck" for="{{cou.u_id}}"></label>
+                                        </td>
+                                        <td class="center">
+                                           <span><a v-text="cou.username|getName"></a></span>
+
+                                        </td>
+                                        <td class="center" v-text="cou.username"></td>
+                                        <td class="center"> 
+											<div class="form-inline">
+                                                <image class="img-circle" :src="cou.headpic" style="height:35px;width:35px"></image>
+                                            </div>
+                                        </td>
+                                        <td class="center">0</td>
+                                        <td class="center" v-text="cou.flag == 0?'普通用户':'管理员'"></td>
+                                        <td>
+                                            <a class="text-primary" title="编辑" @click=""><i class="fa fa-pencil"></i>&nbsp;</a>
+                                            <a class="text-danger" title="永久删除"><i class="fa fa-trash-o" @click=""></i>&nbsp;</a>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        
+    <div id="modal-form" class="modal fade" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="row">
+					 <form class="form-horizontal myform" @submit.prevent="addUserconfirm" role="form" id="adduserFrom">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">头像</label>
+                                <div class="col-sm-10">
+                                    <ul class="icon-image">
+										<li data-toggle="tooltip" data-placement="bottom" title="图片大小不超过4M">
+											<a>
+												<img class="avatar" src='/data/avatarResource/common/default.jpg' onerror="javascript:this.src='/data/avatarResource/common/default.jpg'">
+											</a>
+											<div class="tools tools-bottom">
+												<a>
+													<i class="fa fa-pencil"><input class="wsfile avatarfile" type="file" name="avatarfile" id="avatar"></i>
+												</a>
+											</div>
+										</li>
+									</ul>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">邮箱</label>
+                                <div class="col-sm-10">
+                                    <input id="email" name="email" class="form-control" type="email"  data-toggle="tooltip" placeholder="请输入邮箱" data-placement="bottom" title="请输入一个正确的邮箱">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">密码</label>
+                                <div class="col-sm-10">
+                                    <input id="password" name="password" type="password" class="form-control" placeholder="请输入密码"  data-toggle="tooltip" data-placement="bottom" title="长度为6-16个字符">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">确认密码</label>
+                                <div class="col-sm-10">
+                                    <input id="passwordVerify" name="passwordVerify" type="password" class="form-control" placeholder="请再次输入密码" required="">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">身份级别</label>
+                                <div class="col-sm-10">
+                                    <select class="form-control m-b" name="type">
+                                            <option value="0">普通用户</option>
+                                            <option value="1">管理员</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <div class="hr-line-dashed"></div>
+                            <div class="form-group">
+                                <div class="col-sm-4 col-sm-offset-2">
+                                    <button class="btn btn-primary submit" type="submit">提交</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+        
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/common_js/jquery.cookie.js"></script>
+<script src="/js/common_js/sweetalert.min.js"></script>
+<!-- layerDate plugin javascript -->
+<script src="/js/plugins/layer/laydate/laydate.js"></script>
+<script src="/js/plugins/validate/jquery.validate.min.js"></script>
+<script src="/js/plugins/validate/messages_zh.min.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<!-- Toastr script -->
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<!--自定义js-->
+<script src="/js/view_js/usermgr/userlist.js"></script> 
+</body>
+</html>

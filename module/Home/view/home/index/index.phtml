@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+<head  lang="zh-cn">
+<title>课程设计</title>
+<meta charset="UTF-8">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<script language="javascript">  
+/* 判断当前页面是否在iframe中  */
+if(top != self){window.top.location.href = "/"}  
+</script>
+<meta name="keywords" content="<?php echo $this->setting['web_keyword']?>">
+<meta name="description" content="<?php echo $this->setting['web_keycontent']?>">
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">  
+<link rel="stylesheet" href="/css/common_css/style.min.css">
+<link rel="stylesheet" href="/css/common_css/animation.css">
+<link rel="stylesheet" href="/css/common_css/main.css">
+<link rel="stylesheet" href="/css/jquery.zySlide.css">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<link href="/css/head.css" rel="stylesheet">
+</head>
+<body class="gray-bg top-navigation">
+	<div class="navbar navbar-default">
+		<div class="container">
+			<div class="navbar-header">
+				<img alt="image" src='<?=$this->setting['web_logo']?>' style="height:35px;margin:12px 5px;float: left;"/>
+			</div>
+			<div class="collapse navbar-collapse navbar-collapse-nav"
+				style="height: 0px;">
+				<ul class="nav navbar-nav navbar-right">
+					<li><a href="/">首页</a></li>
+					<?php if(!$this->islogin): ?>
+					<li class="login"><a href="/admin/index/register">注册</a></li>
+					<li class="login"><a data-toggle="modal" href="#modal-form">登录</a></li>
+					<?php endif; ?>
+					<?php if($this->islogin):?>
+					<li><a href='/admin'>你好 <?=$this->userName?>!</a></li>
+					<li><a href='/admin/index/logout'>登出</a></li>
+					<?php endif; ?>
+				</ul>
+			</div>
+		</div>
+	</div>
+    
+    <div id="modal-form" class="modal fade" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-sm-6 b-r">
+                            <h3 class="m-t-none m-b">登录</h3>
+                            <div role="form">
+                                <div class="form-group">
+                                    <label>用户名：</label>
+                                    <input type="email" placeholder="请输入用户名" class="form-control" v-model="username">
+                                </div>
+                                <div class="form-group">
+                                    <label>密码：</label>
+                                    <input type="password" placeholder="请输入密码" class="form-control" v-model="password">
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-primary pull-right m-t-n-xs" type="submit" @click="login"><strong>登录</strong>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <h4>还不是会员？</h4>
+                            <p>您可以注册一个账户</p>
+                            <p class="text-center">
+                                <a href="/admin/index/register"><i class="fa fa-sign-in big-icon"></i></a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+     <div class="row border-bottom white-bg">
+        <nav class="navbar navbar-static-top" role="navigation">
+            <div class="navbar-header">
+                <a href="/" class="navbar-brand"><span class="logo"><?=$this->setting['web_title']?></span></a>
+            </div>
+            <div class="navbar-collapse collapse" id="navbar">
+                <ul class="nav navbar-nav">
+                    <li class="active">
+                        <a aria-expanded="false" role="button" href="/">首页</a>
+                    </li>
+                    <li>
+                        <a aria-expanded="false" role="button" href="/index/course">课程</a>
+                    </li>
+                    <li>
+                        <a aria-expanded="false" role="button" href="/index/passage">文章</a>
+                    </li>
+            </div>
+        </nav>
+     </div>
+   
+    
+    <div id="Slide1" class="zy-Slide">
+    	<section>前一张</section>
+    	<section>后一张</section>
+    	<ul>
+    		<?php foreach ($this->pic as $key => $value):?>
+        		<li><img src="<?php echo $value['p_url']?>" /></li>
+    		<?php endforeach ?>
+    	</ul>
+    </div>
+
+<div class="foot">
+    <ul>
+        <li>
+        	<h1>关于我们</h1>
+        	<span>团结介绍</span>
+        	<a href="#"><span>这里是广州大学的课程设计</span></a>
+        </li>
+        <li style="position:relative;">
+            <h1>友情链接</h1>
+        	<a href="http://www.google.com" target=_blank><span>谷鸽</span></a>
+        	<a href="http://www.baidu.com" target=_blank><span>白度</span></a>
+        </li>
+        <li>
+            <h1>联系合作</h1>
+        	<span>联系我们</span>
+        	<a href="#"><span>联系方式</span></a>
+        </li>
+        <li>
+            <h1>关注我们</h1>
+        	<span>微博:<a>@mmm</a></span>
+        	<a href="#"><span>微信:<img src="/img/qr_code.png" height="50"></span></a>
+        </li>
+    </ul>
+</div>
+<div class="foot" style="height:50px;background-color:#247eca">
+	<ul>
+    	<li>
+    	<span> 粤ICP备<?=$this->setting['web_num']?>号</span>
+        </li>
+        <li>
+        	<span>Copyright © 2015-2017</span>
+        </li>
+    </ul>
+</div>
+<!-- jQuery -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<!-- Bootstrap -->
+<script src="/js/common_js/bootstrap.min.js"></script>
+<!-- Toastr script -->
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<script src="/js/jquery.zySlide.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<script src="/js/view_js/index.js"></script>
+
+</body>
+</html>

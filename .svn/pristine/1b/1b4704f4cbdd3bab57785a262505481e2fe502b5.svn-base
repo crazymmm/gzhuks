@@ -1,0 +1,111 @@
+<?php
+/**
+ * @link      http://github.com/zendframework/ZendSkeletonApplication for the canonical source repository
+ * @copyright Copyright (c) 2005-2016 Zend Technologies USA Inc. (http://www.zend.com)
+ * @license   http://framework.zend.com/license/new-bsd New BSD License
+ */
+
+namespace Application\Controller;
+use Zend\Db\Adapter\Adapter;
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use Usermgr\Model\User;
+use Model\Base\BaseController;
+use Zend\View\Model\JsonModel;
+use Zend\Crypt\Password\Bcrypt;
+
+class IndexController extends BaseController
+{
+
+    public function indexAction()
+    {
+        return new ViewModel();
+    }
+    /* 
+     * 登陆功能
+     *  */
+    public function loginAction(){
+        try {
+            
+                if($this->getRequest()->isPost()){
+
+                    $username = $_POST['username'];
+                    $password = $_POST['password'];
+                    $ret = array();
+                    if (!isset($username) || $username == "") {
+                        return new JsonModel(array('result'=>false,"msg"=>"用户名为空"));
+                    }
+                    
+                    if (!$this->checkMain("email", $username)) {
+                        return new JsonModel(array('result'=>false,"msg"=>"用户名格式不正确"));
+                    }
+                    
+                    if (!isset($password) || $password == "") {
+                        return new JsonModel(array('result'=>false,"msg"=>"请输入密码"));
+                    }
+                    
+                    if (!$this->checkMain("password", $password)) {
+                        return new JsonModel(array('result'=>false,"msg"=>"密码格式不正确"));
+                    }
+                    $user = new User($this->getDbAdapter());
+                    
+                    
+                    $bcrypt = new Bcrypt();
+                    $password = $bcrypt->create($password);
+                    
+                    $userRet = $user->selectUserPS($username,$password);
+                    if($userRet['result']){
+                        return new JsonModel(array('result'=>true,"msg"=>"成功登录"));
+                    }
+                    else{
+                        $userRet = $user->selectUser($username,$password);
+                        if($userRet['result']==true&&empty($userRet['msg'])){
+                            $msg='不存在账号'.$username;
+                            $ret['result'] = true;
+                            $ret['msg']=$msg;
+                            return new JsonModel($ret);
+                        }
+                        elseif($userRet['result']==true&&!empty($userRet['msg'])){
+                            $msg='密码错误，请重新登陆';
+                            $ret['result'] = true;
+                            $ret['msg']=$msg;
+                            return new JsonModel($ret);
+                        }
+                        else{
+                            return new JsonModel($userRet);
+                        }
+                    
+                    }
+                }else{
+                    $response = $this->getResponse();
+                    $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                    $response->setStatusCode(302);
+                    return $response;//重定向到404页面
+                }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+      
+    }
+    public function  registerAction(){
+        $username=$_POST['email'];
+        $password1=$_POST['password1'];
+        $password2=$_POST['password2'];
+        $ret=array();
+        $email=$this->checkMain('email',$username);
+        if (!$email){
+            return new JsonModel(array('result' => false,'msg' => '异常:请输入正确的邮箱'));
+        }
+        $pd=$this->checkMain('password',$password1);
+        if (!$pd){
+            return new JsonModel(array('result' => false,'msg' => '异常:'));
+        }
+    }
+    
+  
+
+
+
+
+
+}

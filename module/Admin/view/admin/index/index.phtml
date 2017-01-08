@@ -1,0 +1,243 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<title>后台</title>
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<style>
+span .img-circle{width: 64px;height: 64px;}
+/* 页面闪烁 */
+[v-cloak]{display:none;}
+</style>
+</head>
+<body class="fixed-sidebar full-height-layout gray-bg">
+<div id="wrapper">
+    <!--左侧导航开始-->
+    <nav class="navbar-default navbar-static-side" role="navigation">
+        <div class="nav-close"><i class="fa fa-times-circle"></i></div>
+        <div class="sidebar-collapse">
+            <ul class="nav" id="side-menu">
+                <li class="nav-header">
+                    <div class="dropdown profile-element">
+                        <span>
+						 <img alt="image" class="img-circle" id="userHeadpic" src=<?php echo $this->headpic;?> onerror="javascript:this.src='/data/avatarResource/common/default.jpg'"/>
+						</span>
+                        <a data-toggle="dropdown" class="dropdown-toggle">
+                            <span class="clear"> 
+						     <span class="block m-t-xs">
+						         <strong class="font-bold" id="userName"><?php echo $this->user;?></strong>
+						     </span>
+                            <span class="text-muted text-xs block"><?php echo $this->role;?><b class="caret"></b></span>
+                            </span>
+                        </a>
+                        <ul class="dropdown-menu animated fadeInRight m-t-xs"> 
+                            <li><a class="J_menuItem" href="/admin/user/index"><i class="fa fa-address-card-o fa-fw"></i> 个人资料</a></li>
+                            <li class="divider"></li>
+                            <li><a href="/admin/index/logout"><i class="fa fa-power-off fa-fw"></i> 登出</a></li>
+                        </ul>
+                    </div>
+                    <div class="logo-element">MZC</div>
+                </li>
+                <?php if($this->flag == '1'): ?>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-book"></i>
+                        <span class="nav-label">课程管理</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level">
+                        <li>
+                        	<a class="J_menuItem" href="/admin/index/coursemgr"><i class="fa fa-list"></i>课程列表</a>
+                        </li>
+                        <li>
+                            <a class="J_menuItem" href="/admin/index/couclassify"><i class="fa fa-indent"></i>课程分类</a>
+                        </li>
+                    </ul>
+                </li>
+                 <?php endif; ?>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-user"></i>
+                        <span class="nav-label">用户管理</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level">
+                        <li>
+                            <a class="J_menuItem" href="/admin/user/index"><i class="fa fa-address-card-o"></i>个人资料</a>
+                        </li>
+                         <?php if($this->flag == '1'): ?>
+                        <li>
+                            <a class="J_menuItem" href="/admin/user/userlist"><i class="fa fa-users"></i>用户列表</a>
+                        </li>
+                         <?php endif; ?>
+                    </ul>
+                </li>
+                 <?php if($this->flag == '1'): ?>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-pencil-square"></i>
+                        <span class="nav-label">内容管理</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level">
+                        <li>
+                            <a class="J_menuItem" href="/admin/index/articlemgr"><i class="fa fa-edit"></i>文章管理</a>
+                        </li>
+                        <li>
+                            <a class="J_menuItem" href="/admin/index/frontpic"><i class="fa fa-image"></i>首页轮播图片</a>
+                        </li>
+                    </ul>
+                </li>
+                <li>
+                    <a href="#">
+                        <i class="fa fa-home"></i>
+                        <span class="nav-label">系统管理</span>
+                        <span class="fa arrow"></span>
+                    </a>
+                    <ul class="nav nav-second-level">
+                        <li>
+                             <a class="J_menuItem" href="/admin/index/setting"><i class="fa fa-gear"></i>网站设置</a>
+                        </li>
+                    </ul>
+                </li>
+                <?php endif; ?>
+            </ul>
+        </div>
+    </nav>
+    <!--左侧导航结束-->
+	<!--右侧部分开始-->
+	<div id="page-wrapper" class="gray-bg dashbard-1">
+		<div class="row border-bottom">
+			<nav class="navbar navbar-static-top" role="navigation" style="margin-bottom: 0">
+				<div class="navbar-header">
+					<a class="navbar-minimalize minimalize-styl-2 btn btn-primary "><i class="fa fa-bars"></i></a>
+					<form role="search" class="navbar-form-custom" method="post" action="/admin/index/search">
+						<div class="form-group">
+							<input type="text" placeholder="请输入您需要查找的内容 …" class="form-control" name="topSearch" id="topSearch">
+						</div>
+					</form>
+				</div>
+				<!-- 文章数量 -->
+				<ul class="nav navbar-top-links navbar-right">
+					<li class="dropdown">
+					      <a href="/" aria-expanded="false">
+					          <i class="fa fa-home"></i>
+					      </a>
+					</li>
+				</ul>
+			</nav>
+		</div>
+		<div class="row content-tabs">
+			<button class="roll-nav roll-left J_tabLeft">
+				<i class="fa fa-backward"></i>
+			</button>
+			<nav class="page-tabs J_menuTabs">
+				<div class="page-tabs-content">
+					<a href="javascript:;" class="active J_menuTab" data-id="/admin/index/home">首页</a>
+				</div>
+			</nav>
+			<button class="roll-nav roll-right J_tabRight">
+				<i class="fa fa-forward"></i>
+			</button>
+			<button class="roll-nav roll-right dropdown J_tabClose">
+				<span class="dropdown-toggle" data-toggle="dropdown">关闭操作<span
+					class="caret"></span></span>
+				<ul role="menu" class="dropdown-menu dropdown-menu-right">
+					<li class="J_tabShowActive"><a>定位当前选项卡</a></li>
+					<li class="divider"></li>
+					<li class="J_tabCloseAll"><a>关闭全部选项卡</a></li>
+					<li class="J_tabCloseOther"><a>关闭其他选项卡</a></li>
+				</ul>
+			</button>
+			<a href="/admin/index/logout" class="roll-nav roll-right J_tabExit"><i
+				class="fa fa fa-sign-out"></i> 退出</a>
+		</div>
+		<div class="row J_mainContent" id="content-main">
+			<iframe class="J_iframe" name="iframe0" width="100%" height="100%"
+				src="/admin/index/home" frameborder="0" data-id="/admin/index/home"
+				seamless></iframe>
+		</div>
+		<div class="footer">
+			<div class="pull-right">
+				&copy; 2016 <a href="/" target="_blank">nxcms</a>
+			</div>
+		</div>
+	</div>
+	<!--右侧部分结束-->
+</div>
+<div class="theme-config">
+    <div class="theme-config-box">
+        <div class="spin-icon">
+            <i class="fa fa-cog fa-spin"></i>
+        </div>
+        <div class="skin-setttings">
+            <div class="title">主题设置</div>
+            <div class="setings-item">
+                <span> 收起左侧菜单 </span>
+                <div class="switch">
+                    <div class="onoffswitch">
+                        <input type="checkbox" name="collapsemenu" class="onoffswitch-checkbox" id="collapsemenu">
+                        <label class="onoffswitch-label" for="collapsemenu"> <span class="onoffswitch-inner"></span> <span class="onoffswitch-switch"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="setings-item">
+                <span> 固定顶部 </span>
+                <div class="switch">
+                    <div class="onoffswitch">
+                        <input type="checkbox" name="fixednavbar" class="onoffswitch-checkbox" id="fixednavbar">
+                        <label class="onoffswitch-label" for="fixednavbar"> <span class="onoffswitch-inner"></span> <span class="onoffswitch-switch"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="setings-item">
+                <span> 固定宽度 </span>
+                <div class="switch">
+                    <div class="onoffswitch">
+                        <input type="checkbox" name="boxedlayout" class="onoffswitch-checkbox" id="boxedlayout">
+                        <label class="onoffswitch-label" for="boxedlayout"> <span class="onoffswitch-inner"></span> <span class="onoffswitch-switch"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+            <div class="title">皮肤选择</div>
+            <div class="setings-item default-skin">
+                <span class="skin-name "> <a class="s-skin-0"> 默认皮肤 </a>
+    			</span>
+            </div>
+            <div class="setings-item blue-skin">
+                <span class="skin-name "> <a class="s-skin-1"> 蓝色主题 </a>
+    			</span>
+            </div>
+            <div class="setings-item yellow-skin">
+                <span class="skin-name "> <a class="s-skin-3"> 黄色/紫色主题 </a>
+    			</span>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/plugins/metisMenu/jquery.metisMenu.js"></script>
+<script src="/js/plugins/slimscroll/jquery.slimscroll.min.js"></script>
+<script src="/js/plugins/layer/layer.min.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<!-- 自定义js -->
+<script src="/js/common_js/admin.js"></script>
+<script src="/js/common_js/contabs.min.js"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+<body class="content-wrapper" v-cloak>
+	<h1>哈哈哈</h1>
+</body>
+</html>

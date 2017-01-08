@@ -1,0 +1,46 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1" />
+<title>首页</title>
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link rel="stylesheet" href="/css/jquery.zySlide.css">
+<script> 
+/* 判断当前页面是否在iframe中  */
+if(self==top){ 
+	window.location="/admin";
+ }
+</script>
+</head>
+<body>
+    <div id="Slide1" class="zy-Slide">
+    	<section>前一张</section>
+    	<section>后一张</section>
+    	<ul>
+        	<li><img src="/img/4.jpg" /></li>
+    		<li><img src="/img/5.jpg" /></li>
+    		<li><img src="/img/6.jpg" /></li>
+    		<li><img src="/img/7.jpg" /></li>
+    		<li><img src="/img/1.jpg" /></li>
+    		<li><img src="/img/2.jpg" /></li>
+    		<li><img src="/img/3.jpg" /></li>
+    	</ul>
+    </div>
+</body>
+
+<!-- jQuery -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<!-- Bootstrap -->
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/jquery.zySlide.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<script src="/js/view_js/home.js"></script>
+</html>

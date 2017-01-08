@@ -1,0 +1,42 @@
+<?php
+namespace Admin\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Admin\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class IndexController extends BaseController
+{
+    const ROUTE_INDEX  = 'usermgr/index';
+    
+    public function indexAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    public function registerAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+
+    public function logoutAction(){
+        try {
+            $user_session = new Container('user');
+            $user_session->getManager()->getStorage()->clear('user');
+            unset($_SESSION['user']);
+            return new JsonModel (array("result" => true,"msg"=>'安全退出'));
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+}

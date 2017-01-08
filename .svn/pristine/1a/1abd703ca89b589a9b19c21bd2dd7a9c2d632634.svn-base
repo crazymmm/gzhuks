@@ -1,0 +1,118 @@
+<?php
+/**
+ * @link      http://github.com/zendframework/ZendSkeletonApplication for the canonical source repository
+ * @copyright Copyright (c) 2005-2016 Zend Technologies USA Inc. (http://www.zend.com)
+ * @license   http://framework.zend.com/license/new-bsd New BSD License
+ */
+
+namespace Application\Controller;
+use Zend\Db\Adapter\Adapter;
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use Usermgr\Model\User;
+use Model\Base\BaseController;
+use Zend\View\Model\JsonModel;
+use Zend\Crypt\Password\Bcrypt;
+use Zend\Session\Container;
+
+class IndexController extends BaseController
+{
+
+    public function indexAction()
+    {
+        /*查看用户是否登录*/
+        $user_session = new Container('user');
+        $userId = $user_session->userId;
+        $userName = $user_session->userName;
+        if(isset($userId)){
+            /*若已登录，则显示用户昵称*/
+            $view = new ViewModel(array("islogin"=>true,"userName"=>$userName));          //实例化模型
+            return $view;
+        }
+        else{
+            $view = new ViewModel(array("islogin"=>false));          //实例化模型
+            return $view;
+        }
+    }
+    /* 
+     * 登陆功能
+     *  */
+    public function loginAction(){
+        try {
+            
+                if($this->getRequest()->isPost()){
+
+                    $username = $_POST['username'];
+                    $password = $_POST['password'];
+                    $ret = array();
+                    if (!isset($username) || $username == "") {
+                        return new JsonModel(array('result'=>false,"msg"=>"用户名为空"));
+                    }
+                    
+                    if (!$this->checkMain("email", $username)) {
+                        return new JsonModel(array('result'=>false,"msg"=>"用户名格式不正确"));
+                    }
+                    
+                    if (!isset($password) || $password == "") {
+                        return new JsonModel(array('result'=>false,"msg"=>"请输入密码"));
+                    }
+                    
+                    if (!$this->checkMain("password", $password)) {
+                        return new JsonModel(array('result'=>false,"msg"=>"密码格式不正确"));
+                    }
+                    $user = new User($this->getDbAdapter());
+                    $userRet = $user->selectUser($username,$password);
+                    if($userRet['result']&&empty($userRet['msg'])){
+                        return new JsonModel(array('result'=>false,"msg"=>"账号不存在"));
+                    }
+                    $userRet = $user->selectUserPS($username,$password);
+                    if($userRet['result']==true&&!empty($userRet['msg'])){
+                        $bcrypt = new Bcrypt();
+                        $ret=$bcrypt->verify($password, $userRet['msg'][0]['password']);
+                        if($ret){
+                            return new JsonModel(array('result'=>true,"msg"=>"成功登陆"));
+                        }
+                        else{
+                            return new JsonModel(array('result'=>true,"msg"=>"密码错误"));
+                        }
+                    }
+                }else{
+                    $response = $this->getResponse();
+                    $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                    $response->setStatusCode(302);
+                    return $response;//重定向到404页面
+                }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+      
+    }
+    public function  registerAction(){
+        $username=$_POST['email'];
+        $password1=$_POST['password1'];
+        $password2=$_POST['password2'];
+        $ret=array();
+        $email=$this->checkMain('email',$username);
+        if (!$email){
+            return new JsonModel(array('result' => false,'msg' => '异常:请输入正确的邮箱'));
+        }
+        $pd1=$this->checkMain('password',$password1);
+        if (!$pd1){
+            return new JsonModel(array('result' => false,'msg' => '异常:密码需要大小写字母跟数字组成并且长度在6-16字符'));
+        }
+        $pd2=$this->checkMain('password',$password2);
+        if (!$pd2){
+            return new JsonModel(array('result' => false,'msg' => '异常:密码需要大小写字母跟数字组成并且长度在6-16字符'));
+        }
+        if($pd1!=$pd2){
+            return new JsonModel(array('result' => false,'msg' => '异常:两次输入的密码不一致'));
+        }
+    }
+    
+  
+
+
+
+
+
+}

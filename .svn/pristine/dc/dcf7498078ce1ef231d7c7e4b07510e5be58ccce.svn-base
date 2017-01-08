@@ -1,0 +1,505 @@
+<?php
+namespace Usermgr\Model;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseTableModel;
+use Zend\View\Model\JsonModel;
+
+class User extends BaseTableModel
+{
+    /**
+     * 初始化
+     * @param Adapter
+      $adapter
+     */
+    public function __construct(Adapter $adapter){
+        $this->adapter = $adapter;
+    }
+    
+    /**
+     * 用户注册时,将IP等信息插入到nx_user_info 表 作扩展
+     * @param  $arr  存放插入的数据
+     * @param $role 用户角色
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function addUserinfo($arr,$role=""){
+        /*如果当未注明是什么角色,则使用网站默认角色 这种情况一般出现是在 注册中,注明一般是在后台的 编辑用户 */
+        if($role == ""){
+            /*查询当前是否开放注册,以及开放注册时用户的默认角色*/
+            $sql = "select m.WS_ROLE_DEFAULT role from nx_system_common_settings m,nx_system_site_settings n where n.REGISTER_ENABLE = 0";
+            $_ret = $this->sqlexec($sql);
+            if(!$_ret['result'] || count($_ret['msg']) == 0){
+                /*不允许注册或者执行错误*/
+                return array('result'=>false,'msg'=>"error to register");
+            }
+            if(!isset($_ret['msg'][0]['role'])){
+                return array('result'=>false,'msg'=>"error to register");
+            }
+            $arr['role'] = $_ret['msg'][0]['role'];
+        }else{
+            $arr['role'] = $role;
+        }
+
+        $sql = "insert into nx_user_info(USER_ID,ROLE_ID,REGISTER_TIME,REGISTER_IP,ADDRESS,NICK_NAME,HEAD_PIC,EMAIL,PASSWORD)
+            values(:userid,:role,:time,:ip,:address,:nickname,:head,:email,:password)";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 删除user表的user_id为当前传入参数值的记录
+     * @param  $userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function deleteUser($userid){
+        $sql = "delete from user where USER_ID = :user";
+        return $this->sqlexec($sql,array("user"=>$userid));
+    }
+
+    /**
+     * 根据用户ID获取角色
+     * @param  $userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getUserRole($userId) {
+        $sql = "select r.ROLE_NAME_EN en,r.ROLE_NAME_CH ch, u.display_name, r.ROLE_LEVEL,i.STATU statu from nx_user_role r,nx_user_info i ,user u 
+            where r.ROLE_ID = i.ROLE_ID and i.USER_ID = :user and u.USER_ID = i.USER_ID limit 1";
+        return $this->sqlexec($sql,array("user"=>$userId));
+    }
+
+    /**
+     * 根据角色ID 获取角色的登记
+     * @param $roleid 角色ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getRoleByRoleid($roleid){
+        $sql = "select r.ROLE_LEVEL from nx_user_role r where r.ROLE_ID = :id limit 1";
+        return $this->sqlexec($sql,array("id"=>$roleid));
+    }
+
+    /**
+     * 用户登录时,将user_id,username,login_time等信息插入到nx_user_login_log 表 记录
+     * @param  $arr  存放插入的数据
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function writeLoginLog($arr) {
+        $sql = 'insert into nx_user_login_log(USER_ID, USERNAME, LOGIN_TIME, ISMOBILE, IP, BROWSE) values(:userid, :username, :time, :isMobile, :serip, :browse)';
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 删除nx_user_login_log表的logid为当前传入参数值的记录
+     * @param  logid 日志ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function deleteLog($logid){
+        $sql = "delete from nx_user_login_log where LOG_ID = :logid";
+        return $this->sqlexec($sql,array("logid"=>$logid));
+    }
+
+    /**
+     * 获取单个或者所有用户最后一次登录信息
+     * @param string $userid
+     */
+    public function getLastLoginLog($userid = ""){
+        if($userid != ""){
+            $sql = "select LOG_ID id,USER_ID userid, lOGIN_TIME logintime,IP ip,ISMOBILE ismobile,BROWSE browse from nx_user_login_log where user_id = $userid ORDER BY lOGIN_TIME DESC LIMIT 1";
+        }else{
+            $sql = "select m.LOG_ID id,m.USER_ID userid, max(m.lOGIN_TIME) logintime,m.IP ip,m.ISMOBILE ismobile,m.BROWSE browse from nx_user_login_log m,user n where m.user_id = n.user_id GROUP by m.user_id";
+        }
+        return $this->sqlexec($sql);
+    }
+
+    /**
+     * 根据用户ID获取信息
+     * @param  $userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getUserInfo($userId) {
+    	$sql = "select n.NICK_NAME nickname,n.SEX sex,n.BIRTHDAY birthday,n.REGISTER_TIME registertime,n.HEAD_PIC headpic,
+        	      n.EDUCATION education, n.LOCATION location, n.SKILLS skills, n.SIGNNAME signName,m.ROLE_NAME_CH rolename,
+    	          m.ROLE_NAME_EN role,m.ROLE_ID roleid from nx_user_info n,nx_user_role m where n.ROLE_ID = m.ROLE_ID and n.USER_ID = :user and ( n.STATU = 0 or n.STATU = 2) limit 1";
+    	return $this->sqlexec($sql,array("user"=>$userId));
+    }
+    /**
+     * 根据用户ID修改个人基本信息
+     * @param  $userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function updateUserInfo($info){
+    	$sql = "update  nx_user_info n set n.NICK_NAME = :nickname,n.SEX = :sex,n.BIRTHDAY= :birthday where USER_ID = :user";
+    	$_ret =  $this->sqlexec($sql,$info);
+    	if(!$_ret['result']){
+    	    return $_ret;
+    	}
+    	$sql = "update user set display_name = :nickname where user_id = :user";
+    	return  $this->sqlexec($sql,array("nickname"=>$info['nickname'],'user' => $info['user']));
+    }
+    
+    /**
+     * 根据用户ID修改个人关于信息
+     * @param  $userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function updateAboutUserInfo($info){
+        $sql = "update  nx_user_info n set n.EDUCATION = :education, n.LOCATION = :location, 
+                    n.SKILLS= :skills , n.SIGNNAME = :signName where n.USER_ID= :userId";
+        return  $this->sqlexec($sql,$info);
+    }
+    
+    /**
+     * 将用户ID对应的头像路径更新到nx_user_info 表
+     * @param  $arr  存放插入的数据
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function addUserHeadPic($arr){
+        $sql = "update nx_user_info set HEAD_PIC = :ava_filename where USER_ID in (:userId)";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    
+    /**
+     * 修改username和display_name
+     * @param    $userArr
+     *     @userId    用户id
+     *     @displayName    显示名称
+ *     @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function updateUser($userArr)
+    {
+        $sql = "update user set DISPLAY_NAME = :display_name where USER_ID = :user_id";
+        return $this->sqlexec($sql, $userArr);
+    }
+    
+    /**
+     * 获取所有用户可以被分配的角色(不包含 superadmin 和  tourist)
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function getAllUserRole()
+    {
+        $sql = "select n.*,count(m.USER_ID) total from nx_user_role n left join nx_user_info m on n.ROLE_ID = m.ROLE_ID where (n.ROLE_NAME_EN != 'superadmin' and n.ROLE_NAME_EN != 'tourist') GROUP by n.ROLE_ID";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 添加用户
+     * @param    $arrInfo
+     *     @email    邮箱
+     *     @username    昵称
+     *     @password    密码
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function addUser($arrInfo)
+    {
+        $sql = 'insert into user(display_name, password, email, state) values(:username, :password, :email, 1)';
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    /**
+     * 根据用户名(或加上用户ID)获取用户个数(用于检查用户名是否被注册)
+     * @param    $arrInfo
+     *     @username    用户名
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function getUserByUsername($arrInfo,$userid="")
+    {
+        if($userid == ""){
+            $sql = 'select * from user where username = :username limit 1';
+        }else{
+            $arrInfo['id'] = $userid;
+            $sql = 'select * from user where username = :username and user_id != :id limit 1';
+        }
+
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    /**
+     * 根据邮箱(或加上用户ID)获取用户个数(用于检查邮箱是否被注册)
+     * @param    $arrInfo
+     *     @email    邮箱
+     * @param  $userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function getUserByEmial($arrInfo,$userid="")
+    {
+        if($userid == ""){
+            $sql = 'select * from user where email = :email limit 1';
+        }else{
+            $arrInfo['id'] = $userid;
+            $sql = 'select * from user where email = :email and user_id != :id limit 1';
+        }
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    /**
+     * 修改用户角色
+     * @param    $arrInfo
+     *     @role_name_ch    角色名（中文）
+     *     @role_name_en    角色名（英文）
+     *     @role_level    角色等级
+     *     @statu    是否启用
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function editUserRole($arrInfo)
+    {
+        
+        /*插入之前先判断角色名称和英文名称是否已经被占用*/
+        $charr = array('ch'=>$arrInfo['role_name_ch'],'id'=>$arrInfo['role_id']);
+        $enarr = array('en'=>$arrInfo['role_name_en'],'id'=>$arrInfo['role_id']);
+        
+        $sql = "select * from nx_user_role where role_name_ch = :ch and ROLE_ID != :id limit 1";
+        $_ret = $this->sqlexec($sql, $charr);
+        if(!$_ret['result'] || count($_ret['msg']) != 0){
+            $_ret['msg'] = count($_ret['msg']) != 0 ?"该角色名称已被使用":"操作失败,请刷新页面重试ERR002";
+            $_ret['result'] = false;
+            return $_ret;
+        }
+        
+        $sql = "select * from nx_user_role where role_name_en = :en and ROLE_ID != :id limit 1";
+        $_ret = $this->sqlexec($sql, $enarr);
+        if(!$_ret['result'] || count($_ret['msg']) != 0){
+            $_ret['msg'] = count($_ret['msg']) != 0 ?"该角色英文名称已被使用":"操作失败,请刷新页面重试ERR003";
+            $_ret['result'] = false;
+            return $_ret;
+        }
+        
+        $sql = 'update nx_user_role set ROLE_NAME_CH = :role_name_ch, ROLE_NAME_EN = :role_name_en, ROLE_LEVEL = :role_level
+                where ROLE_ID = :role_id';
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    /**
+     * 增加用户角色
+     * @param    $arrInfo
+     *     @role_name_ch    角色名（中文）
+     *     @role_name_en    角色名（英文）
+     *     @role_level    角色等级
+     *     @statu 是否可以删除 0 可以 1 不可以
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     *   */
+    public function addUserRole($arrInfo)
+    {
+        /*插入之前先判断角色名称和英文名称是否已经被占用*/
+        $charr = array('ch'=>$arrInfo['role_name_ch']);
+        $enarr = array('en'=>$arrInfo['role_name_en']);
+        
+        $sql = "select * from nx_user_role where role_name_ch = :ch limit 1";
+        $_ret = $this->sqlexec($sql, $charr);
+        if(!$_ret['result'] || count($_ret['msg']) != 0){
+            $_ret['msg'] = count($_ret['msg']) != 0 ?"该角色名称已被使用":"操作失败,请刷新页面重试ERR002";
+            $_ret['result'] = false;
+            return $_ret;
+        }
+        
+        $sql = "select * from nx_user_role where role_name_en = :en limit 1";
+        $_ret = $this->sqlexec($sql, $enarr);
+        if(!$_ret['result'] || count($_ret['msg']) != 0){
+            $_ret['msg'] = count($_ret['msg']) != 0 ?"该角色英文名称已被使用":"操作失败,请刷新页面重试ERR003";
+            $_ret['result'] = false;
+            return $_ret;
+        }
+        
+        $sql = 'insert into nx_user_role(role_name_ch, role_name_en, role_level, statu) values(:role_name_ch, :role_name_en, :role_level, 0)';
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    /**
+     * 删除用户角色
+     * @param    $arrInfo
+     *     @role_id    角色id
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function deleteUserRole($arrInfo)
+    {
+        $sql = 'delete from nx_user_role where role_id = :role_id';
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    public function getAllUser()
+    {
+        $sql = 'SELECT
+    i.USER_ID userid,
+	i.USER_NAME username,
+    i.NICK_NAME nickname,    
+	i.EMAIL email,
+	r.ROLE_ID roleid,
+    i.SEX sex,
+    i.HEAD_PIC userImgSrc,
+	r.ROLE_NAME_CH rolename,
+    i.REGISTER_TIME time,
+	count(c.CONTENT_ID) artnum,
+    i.STATU statu
+FROM
+    nx_user_role r,
+	nx_user_info i LEFT JOIN nx_content c ON i.USER_ID = c.USER_ID
+WHERE i.ROLE_ID = r.ROLE_ID GROUP BY i.USER_ID';
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 获取一段时间内新增注册的用户
+     * @param string $timesql
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getAllUserBytime($timesql=""){
+        $sql = "select count(1) total from nx_user_info where STATU != 1";
+       if($timesql != ""){
+           $sql = $sql . $timesql;
+       }
+       return $this->sqlexec($sql);
+    }
+    
+    /***
+     * 编辑 用户 user表
+     * @param    array    $arrInfo
+     *     @param1    username    用户名
+     *     @param2    email    邮箱
+     *     @param3    statu    是否启用
+     *     @param4    userid    用户id
+     * @param $password 密码
+     * @return    \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function editUser($arrInfo,$password = "")
+    {   
+        if($password == ""){
+            $sql = 'update user set display_name = :username, email = :email where user_id = :userid';
+        }else{
+            $arrInfo['password'] = $password;
+            $sql = 'update user set display_name = :username, password = :password,email = :email where user_id = :userid';
+        }
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    
+    /***
+     *编辑 用户  userinfo表
+     * @param    array    $arrInfo
+     *     @param1    username    用户名
+     *     @param2    email    邮箱
+     *     @param3    statu    是否启用
+     *     @param4    userid    用户id
+     *     @param5    nickname    昵称
+     *     @param6    address    地址
+     *     @param7    ip    ip
+     * @return    \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function editUserinfo($arrInfo,$password = "")
+    {
+        if($password == ""){
+            $sql = 'update nx_user_info set
+            email = :email,
+            statu = :statu,
+            nick_name = :nickname,
+            role_id = :roleid
+            where user_id = :userid';
+        }else{
+            $arrInfo["password"] = $password;
+            $sql = 'update nx_user_info set
+            email = :email,
+            statu = :statu,
+            nick_name = :nickname,
+            role_id = :roleid,
+            password = :password
+            where user_id = :userid';
+        }
+        return $this->sqlexec($sql, $arrInfo);
+    }
+    /**
+     * 更改用户的角色
+     * @param  $arrinfo
+     *  newrole 新角色
+     *  userid 用户ID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function editUserRoleId($arrinfo)
+    {
+        $sql = 'update nx_user_info set role_id = :newrole where user_id = :userid';
+        return $this->sqlexec($sql, $arrinfo);
+    }
+    /**
+     * 获取网站当前所有的角色 除管理员,超级管理员和游客除外
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getRole(){
+        $sql = "select ROLE_ID id, ROLE_NAME_EN rolename,ROLE_NAME_CH translate,ROLE_LEVEL level,STATU statu from nx_user_role where ROLE_NAME_EN != 'admin' and ROLE_NAME_EN != 'tourist'
+    			and ROLE_NAME_EN != 'superadmin'";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 根据用户ID获取左侧栏显示数据
+     * @param $userid 用户ID
+     * @param $parid 父级navID
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getNavListByUserId($userid,$parid = ""){
+        $arr = array('id'=>$userid);
+        if($parid == ""){
+            $sql = "select n.NAV_ID id,n.NAV_NAME name,n.ICON icon,n.ROUTER_URL url,n.PARENT_ID parid,n.SEQUENCE seq ,n.ATTR_ID atid from nx_nav_and_role m,nx_nav_list n where n.PARENT_ID is null and m.NAV_ID = n.NAV_ID and m.ROLE_ID = (select ROLE_ID from nx_user_info where USER_ID = :id) order by n.SEQUENCE";
+        }else{
+            $arr['parid'] = $parid;
+            $sql = "select n.NAV_ID id,n.NAV_NAME name,n.ICON icon,n.ROUTER_URL url,n.PARENT_ID parid,n.SEQUENCE seq ,n.ATTR_ID atid  from nx_nav_and_role m,nx_nav_list n where (n.PARENT_ID = :parid and m.NAV_ID = n.NAV_ID and m.ROLE_ID = (select ROLE_ID from nx_user_info where USER_ID = :id)) or n.nav_id = 8 group by n.nav_id  order by n.SEQUENCE";
+        }
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 获取一二级列表
+     * @param  $parid 父级ID
+     * @param  IS_ASSREDIT 是否允许分配显示
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getNavlist($parid = ""){
+        if($parid == ""){
+            $sql = "select NAV_ID id,NAV_NAME name,ICON icon,PARENT_ID parid,SEQUENCE seq from nx_nav_list where PARENT_ID is null and IS_ASSREDIT = 0 order by SEQUENCE";
+            return $this->sqlexec($sql);
+        }else{
+            $sql = "select NAV_ID id,NAV_NAME name,ICON icon,PARENT_ID parid,SEQUENCE seq from nx_nav_list where PARENT_ID = :parid and IS_ASSREDIT = 0 order by SEQUENCE";
+            return $this->sqlexec($sql,array('parid'=>$parid));
+        }
+    }
+    
+    /**
+     * 根据navId roleID 获取 其中的所有的动作和选中的动作
+     * @param $navid
+     * @param $roleid
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getFunctionBynavid($navid,$roleid) {
+        $sql = "select m.FUNCTION_ID id,m.FUNCTION_NAME name,m.ACTION action,m.CONTROLLER cotrl,m.MODULE module,
+                       m.NAV_ID navid,n.P_ID pid ,m.BUTTON_KEY buttonkey
+                from nx_nav_function_list m left join nx_func_and_role n on 
+                (m.FUNCTION_ID = n.FUNCTION_ID and n.ROLE_ID = :role)
+                where m.NAV_ID = :id ORDER BY m.FUNCTION_ID";
+        return $this->sqlexec($sql,array('id'=>$navid,'role'=>$roleid));
+    }
+    
+    /**
+     * 根据角色ID删除对应的权限
+     * @param unknown $roleid
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function delFunRolelistByroleid($roleid){
+        $sql = "delete from nx_func_and_role where ROLE_ID = :id";
+        return $this->sqlexec($sql,array('id'=>$roleid));
+    }
+    
+    
+    /**
+     * 根据角色ID 删除对应的权限
+     * @param unknown $roleid
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function delNavRolelistByroleid($roleid){
+        $sql = "delete from nx_nav_and_role where ROLE_ID = :id";
+        return $this->sqlexec($sql,array('id'=>$roleid));
+    }
+    
+    /**
+     * 增加权限
+     * @param unknown $sql
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function addRoleList($sql){
+        return $this->sqlexec($sql);
+    }
+    
+}

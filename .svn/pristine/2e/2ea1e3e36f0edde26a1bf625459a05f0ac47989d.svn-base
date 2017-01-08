@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+<script> 
+/* 判断当前页面是否在iframe中  */
+if(self==top){window.location="/admin";}
+</script>
+<title>课程分类</title>
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<link href="/css/ui.css" rel="stylesheet">
+<link href="/css/common_css/sweetalert.css" rel="stylesheet">
+<style>
+    /* 页面闪烁 */
+    [v-cloak]{display:none;}
+</style>
+</head>
+<body class="gray-bg" v-cloak>
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+       <div class="ibox ">
+              <div class="col-sm-8 col-sm-offset-2 m-b-xs">
+            	<button type="button" class="btn btn-sm btn-primary" @click="refresh"> <i class="fa fa-refresh fa-spin"></i> 刷新</button>&nbsp;
+            	<button type="button" class="btn btn-sm btn-primary" @click="saveList"> <i class="fa fa-save"></i> 保存更改</button>&nbsp;
+            	<button type="button" class="btn btn-sm  btn-primary" @click="addCL"><i class="fa fa-plus"></i> 新增分类</button>
+              </div>
+    	        <div class="col-sm-8 col-sm-offset-2 ibox-content text-center">
+                    <?php if (count($this->msg) != 0){?>
+                            <p class="m-b-lg">
+                                                        拖动可以快速分级(最高二级)和排序
+                            </p>
+                            <div class="dd" id="nestable">
+                               <ol class="dd-list">
+                                 <?php foreach ($this->msg as $key => $value):?>
+                                    <li class="dd-item my"  data-id="<?php echo $value['cl_id']?>">
+                                        <div class="dd-handle"><?php echo $value['cl_name']?></div>
+                                            <ol class="dd-list">
+                                            <?php foreach ($value['childnode'] as $k => $v):?>
+                                                <li class="dd-item" data-id="<?php echo $v['cl_id']?>">
+                                                    <div class="dd-handle"><?php echo $v['cl_name']?></div>
+                                                </li>
+                                           <?php endforeach ?>
+                                         </ol>
+                                    </li>
+                    			<?php endforeach ?>
+                                </ol>
+                             </div>                                 
+                        <?php }else { ?>
+                             <p>点击创建一个新课程分类</p>
+                             <div>
+                                <button class="btn btn-default btn-circle btn-lg" type="button" title="增加课程分类" data-toggle="modal" data-target="#addSto-modal" @click="getTopicinfo('')">
+                                    <i class="fa fa-plus"></i>
+                                </button>
+                             </div>
+                        <?php }?>
+                    </div>
+		</div>
+ </div>
+</div>       
+      
+ 
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/common_js/jquery.cookie.js"></script>
+<script src="/js/common_js/sweetalert.min.js"></script>
+<!-- layerDate plugin javascript -->
+<script src="/js/plugins/layer/laydate/laydate.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<!-- Toastr script -->
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<!--自定义js-->
+<script src="/js/view_js/couclassify.js"></script> 
+<!-- Nestable List -->
+<script src="/js/plugins/nestable/jquery.nestable.js"></script>
+<script>
+    $(document).ready(function() {
+        $("#nestable").nestable({
+            group: 1,
+            maxDepth:2
+        })
+    });
+</script>
+</body>
+</html>

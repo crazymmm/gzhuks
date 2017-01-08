@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+<title>角色管理</title>
+<script> 
+/* 判断当前页面是否在iframe中  */
+if(self==top){window.location="/admin";}
+</script>
+<meta name="keywords" content="">
+<meta name="description" content="">
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<style>
+    body{font-size:12px;font-family:tahoma;}
+    input.middle{vertical-align: middle;margin:0px;}
+    span{vertical-align:middle;}
+    /*提示*/
+    #update-nag,.update-nag {
+        line-height: 19px;
+        padding: 11px 15px;
+        font-size: 14px;
+        text-align: left;
+        margin-bottom:10px;
+        background-color: #fff;
+        border-left: 4px solid #ffba00;
+        -webkit-box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
+        box-shadow: 0 1px 1px 0 rgba(0,0,0,.1);
+    }
+</style>
+</head>
+<body class="gray-bg">
+    <div class="wrapper wrapper-content animated fadeInRight">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="ibox float-e-margins">
+                    <div class="ibox-title">
+                        <h5>管理角色</h5>
+                        <div class="ibox-tools">
+                            <a  title="增加角色" data-toggle="modal" data-target="#addTag-modal" @click="saveRole('')" v-if="btnPermisson['addRole']">
+                                <i class="fa fa-plus faa-bounce animated-hover"></i>
+                            </a>
+                            <a @click="getRegisterInfo" title="刷新" v-if="btnPermisson['getRole']">
+                                <i class="fa fa-refresh fa-spin"></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="ibox-content">
+                    <button type="button" class="btn btn-sm btn-primary" @click="getRegisterInfo" v-if="btnPermisson['getRole']"><i class="fa fa-refresh"></i> 刷新</button>&nbsp;
+                    <button type="button" class="btn btn-sm btn-white" @click="saveRole('')" v-if="btnPermisson['addRole']"><i class="fa fa-plus"></i> 增加角色</button>
+                        <table class="table table-bordered">
+                            <thead>
+                                <tr>
+                                    <th>角色</th>
+                                    <th>级别</th>
+                                    <th>人数</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                            	<tr v-if="roleList.length == 0">
+                            		<td colspan="4" align="center">无角色数据</td>
+                            	<tr>
+                                <tr v-if="roleList.length > 0" v-for="role in roleList">
+                                    <td><span v-if="role.STATU == 1" class="text-info">[默认角色]</span> <a v-text="role.ROLE_NAME_CH" @click="getPermissionList(role)"></a></td>
+                                     <td><span v-text="role.ROLE_LEVEL"></span></td>
+                                    <td><a v-text="role.total"></a></td>
+                                    <td>
+                                        <button v-if="role.STATU == 0" type="button" class="btn btn-outline btn-xs btn-default" @click="saveRole(role)" v-if="btnPermisson['editRole']"><i class="fa fa-pencil text-success"></i> 编辑</button>
+                                        <button type="button" class="btn btn-outline btn-xs btn-default" @click="getPermissionList(role)" v-if="role.STATU == 1 || btnPermisson['saveRolePer']"><i :class="{'fa fa-search text-info':role.STATU == 1,'fa fa-paper-plane text-info':role.STATU != 1}"></i> {{role.STATU == 1 ? '查看权限':'授权'}}</span></button>
+                                        <button v-if="role.STATU == 0" type="button" class="btn btn-outline btn-xs btn-default" @click="deleteRole(role)" v-if="btnPermisson['delRole']"><i class="fa fa-trash text-danger"></i> 删除</button>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="editRole-modal" tabindex="-1" role="dialog" aria-labelledby="addTag-modal-Label">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">修改角色</h4>
+                </div>
+                <div class="modal-body">
+                    <form role="form" class="form-horizontal">
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">名称</label>
+                            <div class="col-sm-9">
+                                <input id="role_name" type="text" class="form-control" placeholder="2到6个字符长度之间"/>
+                            </div>
+                        </div>
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">英文名称</label>
+                            <div class="col-sm-9">
+                                <input id="role_name_en" type="text" class="form-control" placeholder="2到6个字符长度之间"/>
+                            </div>
+                        </div>
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">级别</label>
+                            <div class="col-sm-9">
+                                <input id="role_level" type="text" class="form-control" onkeyup="this.value=this.value.replace(/[^0-9]/g,'')" onafterpaste="this.value=this.value.replace(/[^0-9]/g,'')" placeholder="级别由1到9任一数字"/>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button id="saveButton" type="button" class="btn btn-sm btn-primary editBtn" @click="saveRoleConfirm">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal inmodal" id="PerModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content animated bounceInRight">
+                <div class="modal-body">
+                    <div class="tree navbar-default">
+                    <div class="update-nag">注意:没有勾选删除,编辑等操作的角色只能对本人创建的数据编辑删除   <button class="btn btn-warning btn-circle question" type="button" data-toggle="tooltip" data-placement="bottom" data-original-title="例:角色没有勾选编辑文章的权限,则该用户只能编辑自己发布的文章"><i class="fa fa-question"></i></button></div>
+                        <ul class="nav">
+                           <li v-for="pit in permissionList">
+                            <input type="checkbox" v-model="pit.check" class="middle" v-if="pit.childnode.length>0" @click="firstCheckAll(pit)"><span><i class="fa fa-minus-square-o fa-lg" v-if="pit.childnode.length>0"></i><i class="{{pit.icon+' fa-lg'}}"></i> {{pit.name}}</span>
+                            <ul class="nav nav-second-level" style="padding: 10px 5px 0px 40px;">
+                                 <li v-for="secnode in pit.childnode">
+                                    <input type="checkbox" v-model="secnode.check" class="middle" v-if="secnode.childnode.length>0" @click="secondCheckAll(pit,secnode)"><span><i class="fa fa-plus-square-o fa-lg" v-if="secnode.childnode.length>0"></i><i class="{{secnode.icon+' fa-lg'}}"></i> {{secnode.name}}</span>
+                                    <ul class="nav nav-third-level" style="padding: 10px 5px 0px 40px;">
+                                        <li  v-for="thirdnode in secnode.childnode" style="display: none;">
+                                            <input type="checkbox" v-model="thirdnode.check" class="middle" @click="thirdCheck(pit,secnode,thirdnode)"><span><i class="fa fa-leaf fa-lg"></i> {{thirdnode.name}}</span>
+                                        </li>
+                                    </ul>
+                                 </li>
+                            </ul>
+                           </li>
+                        </ul>
+                   </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button id="saveButton" type="button" class="btn btn-sm btn-primary" @click="savePermissionList">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="deleteModal"  tabindex="-1" role="dialog" aria-labelledby="confirm-modal-Label">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">删除确认</h4>
+                </div>
+                <div class="modal-body">
+                 	<h4 style="text-align:center">确认删除角色 <strong class="text-danger" v-text="roleName"></strong> ?</h4>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button id="saveButton" type="button" class="btn btn-sm btn-primary editBtn" @click="deleteRoleConfirm">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<!--自定义js-->
+<script src="/js/view_js/usermgr/role.js"></script> 
+</body>
+
+</html>

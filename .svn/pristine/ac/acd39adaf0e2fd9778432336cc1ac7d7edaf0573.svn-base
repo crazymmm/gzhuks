@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html>
+<head  lang="zh-cn">
+<title>课程设计</title>
+<meta charset="UTF-8">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<script language="javascript">  
+/* 判断当前页面是否在iframe中  */
+if(top != self){window.top.location.href = "/"}  
+</script>
+<meta name="keywords" content="<?php echo $this->setting['web_keyword']?>">
+<meta name="description" content="<?php echo $this->setting['web_keycontent']?>">
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">  
+<link rel="stylesheet" href="/css/common_css/style.min.css">
+<link rel="stylesheet" href="/css/common_css/animation.css">
+<link rel="stylesheet" href="/css/common_css/main.css">
+<link rel="stylesheet" href="/css/jquery.zySlide.css">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<link href="/css/head.css" rel="stylesheet">
+<style>
+    /* 页面闪烁 */
+    [v-cloak]{display:none;}
+</style>
+</head>
+<body class="gray-bg top-navigation">
+	<div class="navbar navbar-default">
+		<div class="container">
+			<div class="navbar-header">
+				<img alt="image" src='<?=$this->setting['web_logo']?>' style="height:35px;margin:12px 5px;float: left;"/>
+			</div>
+			<div class="collapse navbar-collapse navbar-collapse-nav"
+				style="height: 0px;">
+				<ul class="nav navbar-nav navbar-right">
+					<li><a href="/">首页</a></li>
+					<?php if(!$this->islogin): ?>
+					<li class="login"><a href="/admin/index/register">注册</a></li>
+					<li class="login"><a data-toggle="modal" href="#modal-form">登录</a></li>
+					<?php endif; ?>
+					<?php if($this->islogin):?>
+					<li><a href='/admin'>你好 <?=$this->userName?>!</a></li>
+					<li><a href='/admin/index/logout'>登出</a></li>
+					<?php endif; ?>
+				</ul>
+			</div>
+		</div>
+	</div>
+    
+    <div id="modal-form" class="modal fade" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-body">
+                    <div class="row">
+                        <div class="col-sm-6 b-r">
+                            <h3 class="m-t-none m-b">登录</h3>
+                            <div role="form">
+                                <div class="form-group">
+                                    <label>用户名：</label>
+                                    <input type="email" placeholder="请输入用户名" class="form-control" v-model="username">
+                                </div>
+                                <div class="form-group">
+                                    <label>密码：</label>
+                                    <input type="password" placeholder="请输入密码" class="form-control" v-model="password">
+                                </div>
+                                <div>
+                                    <button class="btn btn-sm btn-primary pull-right m-t-n-xs" type="submit" @click="login"><strong>登录</strong>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-sm-6">
+                            <h4>还不是会员？</h4>
+                            <p>您可以注册一个账户</p>
+                            <p class="text-center">
+                                <a href="/admin/index/register"><i class="fa fa-sign-in big-icon"></i></a>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    
+     <div class="row border-bottom white-bg">
+        <nav class="navbar navbar-static-top" role="navigation">
+            <div class="navbar-header">
+                <a href="/" class="navbar-brand"><span class="logo"><?=$this->setting['web_title']?></span></a>
+            </div>
+            <div class="navbar-collapse collapse" id="navbar">
+                <ul class="nav navbar-nav">
+                    <li>
+                        <a aria-expanded="false" role="button" href="/">首页</a>
+                    </li>
+                    <li>
+                        <a aria-expanded="false" role="button" href="/index/course">课程</a>
+                    </li>
+                    <li class="active">
+                        <a aria-expanded="false" role="button" href="/index/passage">文章</a>
+                    </li>
+            </div>
+        </nav>
+     </div>
+    
+    	<div class="container page" style="min-height: 550px">
+    		<div id="main" class="row" v-if="!showDetail"  v-cloak>
+    			<div class="col-sm-9 animated fadeInLeft">
+    				<div class="mail-box-header">
+                        <ul class="tag-list" style="padding: 0; ">
+                            <li v-for="item in typelist">
+                                <a @click="statuChange(item)"  v-bind:style="{'background-color':item.color,'color': item.textcolor}">
+                                    <span v-text="item.name"></span>
+                                </a>
+                            </li>
+                            <div class="clearfix"></div>
+                        </ul>
+    				</div>
+    				<div class="mail-box">
+    					<div class="mail-body" style="border-top:0;padding:0 20px">
+    						<div class="content">
+                                 <div class="ibox" style="margin-bottom:0" v-for="item in articleList">
+                                        <div class="ibox-content">
+                                            <a  class="btn-link" @click="showArt(item)">
+                                                <h2 v-text="item.title"></h2>
+                                            </a>
+                                            <div class="small m-b-xs">
+                                                <strong v-text="item.username"></strong> 
+                                                <span style="margin-left: 10px;" class="text-muted"><i class="fa fa-clock-o"></i> 3 小时前</span>
+                                                <span style="margin-left: 10px;" id="views"><i class="fa fa-eye"></i>  +0次浏览</span>
+                                                <span style="margin-left: 10px;"><i class="fa fa-comment"></i> +<span id="conum">3</span>评论</a>
+                                            </div>
+                                            <p v-html="item.seocontent"></p>
+                                            <div class="row" v-if="0 != item.keyarr.length">
+                                                <div class="col-md-6">
+                                                    <h5>关键字：</h5>
+                                                    <ul class="tag-list" style="padding: 0; ">
+                                                        <li v-for="val in item.keyarr">
+                                                            <a  v-bind:style="{'background-color':item.color,'color': item.textcolor}">
+                                                                <span v-text="val"></span>
+                                                            </a>
+                                                        </li>
+                                                    </ul>
+                                                </div>
+                                            </div>
+                                        </div>
+                                   </div>
+                                   <div class="ibox"  v-if="0 == articleList.length">
+                                        <div class="ibox-content">
+                                            <a class="btn-link" style="text-align: center">
+                                                <h2>该栏目暂无文章</h2>
+                                            </a>
+                                        </div>
+                                   </div>
+                             </div>
+    					</div>
+    				</div>
+    			</div>
+    
+    			<div class="col-sm-3 animated fadeInRight">
+    				<div class="ibox float-e-margins">
+    					<div class="ibox-content mailbox-content">
+    						<div class="file-manager">
+    
+    							<div class="ibox float-e-margins">
+    								<div class="ibox-content">
+    									<strong>关于我们</strong>
+    									<div>
+    										<p style="text-indent: 20px;">你看那个好像</p>
+    									</div>
+    									<strong>联系方式</strong>
+    									<div>
+    										<p style="text-indent: 20px;">QQ:123456</p>
+    										<p style="text-indent: 20px;">Tel:123456</p>
+    									</div>
+    								</div>
+    							</div>
+    
+    							<div class="ibox float-e-margins">
+    								<div class="ibox-title">
+    									<strong class="wt">热门文章</strong>
+    								</div>
+    								<div class="ibox-content">
+    									<ul class="list-group">
+    										<li class="list-group-item"><a title="对对对">对对对</a></li>
+    										<li class="list-group-item"><a title="移动幸福城网银充值已经开通">移动幸福城网银充值已经开通</a></li>
+    										<li class="list-group-item"><a title="移动幸福城订购和转赠功能介绍">移动幸福城订购和转赠功能介绍</a></li>
+    										<li class="list-group-item"><a title="幸福城购物车及订购方式改进">幸福城购物车及订购方式改进</a></li>
+    										<li class="list-group-item"><a title="移动幸福城可以用QQ号码登录啦">移动幸福城可以用QQ号码登录啦</a></li>
+    										<li class="list-group-item"><a title="订单状态介绍">订单状态介绍</a></li>
+    										<li class="list-group-item"><a title="财务明细查看">财务明细查看</a></li>
+    										<li class="list-group-item"><a title="订单查看">订单查看</a></li>
+    									</ul>
+    								</div>
+    							</div>
+    						</div>
+    					</div>
+    				</div>
+    			</div>
+    		</div>
+    		
+    		
+    		<div id="main" class="row" v-if="showDetail" v-cloak> 
+    			<div class="col-sm-12 animated fadeInLeft">
+            	   <div class="ibox">
+                        <div class="ibox-content">
+                            <div class="pull-left">
+                                <button class="btn btn-success" type="button" @click="showDetail=false">返回文章列表</button>
+                            </div>
+                            <div class="text-center article-title">
+                                <h1 v-text="artInfo.title"></h1>
+                            </div>
+                            <p v-html="artInfo.content"></p>
+                        </div>
+                    </div>
+                 </div>
+    		</div>
+    	</div>
+    
+    <div class="foot">
+        <ul>
+            <li>
+            	<h1>关于我们</h1>
+            	<span>团结介绍</span>
+            	<a href="#"><span>这里是广州大学的课程设计</span></a>
+            </li>
+            <li style="position:relative;">
+                <h1>友情链接</h1>
+            	<a href="http://www.google.com" target=_blank><span>谷鸽</span></a>
+            	<a href="http://www.baidu.com" target=_blank><span>白度</span></a>
+            </li>
+            <li>
+                <h1>联系合作</h1>
+            	<span>联系我们</span>
+            	<a href="#"><span>联系方式</span></a>
+            </li>
+            <li>
+                <h1>关注我们</h1>
+            	<span>微博:<a>@mmm</a></span>
+            	<a href="#"><span>微信:<img src="/img/qr_code.png" height="50"></span></a>
+            </li>
+        </ul>
+	</div>
+<div class="foot" style="height:50px;background-color:#247eca">
+	<ul>
+    	<li>
+    	<span> 粤ICP备<?=$this->setting['web_num']?>号</span>
+        </li>
+        <li>
+        	<span>Copyright © 2015-2017</span>
+        </li>
+    </ul>
+</div>
+<!-- jQuery -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<!-- Bootstrap -->
+<script src="/js/common_js/bootstrap.min.js"></script>
+<!-- Toastr script -->
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<script src="/js/jquery.zySlide.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<script src="/js/view_js/passage.js"></script>
+
+</body>
+</html>

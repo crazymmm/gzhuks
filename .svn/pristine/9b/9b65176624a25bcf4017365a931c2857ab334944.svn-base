@@ -1,0 +1,56 @@
+<?php
+namespace Admin\Model;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseTableModel;
+use Zend\View\Model\JsonModel;
+
+class User extends BaseTableModel
+{
+    /**
+     * 初始化
+     * @param Adapter
+      $adapter
+     */
+    public function __construct(Adapter $adapter){
+        $this->adapter = $adapter;
+    }
+    
+    /**
+     * 根据用户名获取
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectUser($username){
+        $sql = "select * from user where username = :username limit 1";
+        return $this->sqlexec($sql,array("username"=>$username));
+    }
+    /**
+     * 根据用户ID获取
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectUserById($userid){
+        $sql = "select * from user where u_id = :id limit 1";
+        return $this->sqlexec($sql,array("id"=>$userid));
+    }
+    /**
+     * 注册用户
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function registerUser($username,$password){
+        $sql = "insert into user(username,password) values(:username,:password)";
+        return $this->sqlexec($sql,array("username"=>$username,"password"=>$password));
+    }
+    
+    /**
+     * 更新头像
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function addUserHeadPic($arr){
+        $sql = "update nx_user_info set HEAD_PIC = :ava_filename where USER_ID in (:userId)";
+        return $this->sqlexec($sql,$arr);
+    }
+}

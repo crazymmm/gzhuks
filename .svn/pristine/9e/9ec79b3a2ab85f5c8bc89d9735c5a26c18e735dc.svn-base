@@ -1,0 +1,26 @@
+<?php
+namespace Usermgr\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use NxCloud\Model\NxCloud;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Model\Base\nxException;
+use Usermgr\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class IndexController extends BaseController
+{
+    const ROUTE_INDEX  = 'usermgr/index';
+    
+    public function indexAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+}

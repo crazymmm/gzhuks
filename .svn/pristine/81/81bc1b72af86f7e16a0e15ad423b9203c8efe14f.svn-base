@@ -1,0 +1,122 @@
+<?php
+/**
+ * @link      http://github.com/zendframework/ZendSkeletonApplication for the canonical source repository
+ * @copyright Copyright (c) 2005-2016 Zend Technologies USA Inc. (http://www.zend.com)
+ * @license   http://framework.zend.com/license/new-bsd New BSD License
+ */
+
+namespace Application\Controller;
+use Zend\Db\Adapter\Adapter;
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use Usermgr\Model\User;
+use Model\Base\BaseController;
+
+class IndexController extends BaseController
+{
+
+    public function indexAction()
+    {
+        return new ViewModel();
+    }
+    public function loginAction(){
+        $username='admin';
+        $password='123456';
+        $user = new User($this->getDbAdapter());
+        $userRet = $user->selectUser($username,$password);
+        var_dump($userRet);exit;
+        // echo 11;exit;
+        $sql = "select t.* from user";
+        $_ret = $this->sqlexec($sql);
+        var_dump($_ret);exit;
+        //         $username = $_GET['username'];
+        //         $password = $_GET['password'];
+        //    $json = json_encode(array('username'=>$username,'password'=>$password));exit;
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+        $ret = array();
+        if ($username == "") {
+            $msg = "用户名为空";
+            $ret['sign'] = false;
+            $ret['msg'] = $msg;
+            $json = json_encode($ret);
+            echo $json;
+            exit();
+        }
+    
+        if (! preg_match("/[\x4E00-\x9FA5\\w]{2,16}/", $username)) {
+            $msg = "用户名需要2~16位的中文，字母或数字";
+            $ret['sign'] = false;
+            $ret['msg'] = $msg;
+            $json = json_encode($ret);
+            echo $json;
+            exit();
+        }
+    
+        if ($password == "") {
+            $msg = "密码为空";
+            $ret['sign'] = false;
+            $ret['msg'] = $msg;
+            $json = json_encode($ret);
+            echo $json;
+            exit();
+        }
+    
+        if (! preg_match("/\\w{6,18}/", $password)) {
+            $msg = "密码长度在6~18位，只能包含字符，数字，字母";
+            $ret['sign'] = false;
+            $ret['msg'] = $msg;
+            $json = json_encode($ret);
+            echo $json;
+            exit();
+        }
+    
+        //  $password=md5($password);
+        $ret = $this->sql("select * from user where username='{$username}'&&password='{$password}'limit 1");
+        if (!empty($ret)) {
+            //             $user_session = new Container ('user');
+            //             $user_session->userID=$ret[0]['u_id'];
+            //             $user_session->userNAME=$ret[0]['username'];
+            //   echo $this->userID;exit;
+            //                         session_start();
+            //                         $_SESSION['id']=$ret[0]['u_id'];
+            //                         $_SESSION['user']=$ret[0]['username'];
+            //             var_dump($ret);exit;
+            //echo $ret[0]['u_id'];
+            //               $a=$this->setSessionAction($ret);
+            //               $b=$this->getSessionAction($ret);
+            //  exit;
+            $msg="成功登陆";
+            $ret['sign'] = true;
+            $ret['msg']=$msg;
+            $json = json_encode($ret);
+            echo $json;
+            exit();
+        } else {
+            $rat= $this->sql("select * from user where username='{$username}' limit 1");
+            if (empty($rat)) {
+                $msg="账号不存在";
+                $ret['sign'] = false;
+                $ret['msg'] = $msg;
+                $json = json_encode($ret);
+                echo $json;
+                exit();
+            }
+            else{
+                $msg="密码错误，请重新输入";
+                $ret['sign'] = false;
+                $ret['msg'] = $msg;
+                $json = json_encode($ret);
+                echo $json;
+                exit();
+            }
+        }
+    }
+    
+  
+
+
+
+
+
+}

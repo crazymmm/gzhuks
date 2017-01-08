@@ -1,0 +1,42 @@
+<?php
+/**
+ * Global Configuration Override
+ *
+ * You can use this file for overriding configuration values from modules, etc.
+ * You would place values in here that are agnostic to the environment and not
+ * sensitive to security.
+ *
+ * @NOTE: In practice, this file will typically be INCLUDED in your source
+ * control, so do not include passwords or other sensitive information in this
+ * file.
+ */
+
+// return [
+//     'db' => [
+//         'driver' => 'Pdo',
+//         'dsn'    => sprintf('sqlite:%s/data/zftutorial.db', realpath(getcwd())),
+//     ],
+// ];
+
+return array(
+    // db 表示数据库配置信息节点
+    'db' => array(
+        'username' => 'root',
+        'password' => '',
+        // driver 表示数据库使用的驱动程序类型
+        'driver'         => 'Pdo',
+        // dsn 数据库连接串,也称为数据源
+        'dsn'            => 'mysql:dbname=ziji;host=127.0.0.1',
+        // driver_options 数据库驱动选项
+        'driver_options' => array(
+            PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES \'UTF8\''
+        ),
+    ),
+    'service_manager' => array(
+        // factories 表示服务器管理器需要加载的工厂类
+        'factories' => array(
+            'Zend\Db\Adapter\Adapter'
+            => 'Zend\Db\Adapter\AdapterServiceFactory',
+        ),
+    ),
+);

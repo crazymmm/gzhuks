@@ -1,0 +1,115 @@
+<?php
+/**
+ * @link      http://github.com/zendframework/ZendSkeletonApplication for the canonical source repository
+ * @copyright Copyright (c) 2005-2016 Zend Technologies USA Inc. (http://www.zend.com)
+ * @license   http://framework.zend.com/license/new-bsd New BSD License
+ */
+
+namespace Application\Controller;
+use Zend\Db\Adapter\Adapter;
+use Zend\Mvc\Controller\AbstractActionController;
+use Zend\View\Model\ViewModel;
+use Usermgr\Model\User;
+use Model\Base\BaseController;
+use Zend\View\Model\JsonModel;
+
+class IndexController extends BaseController
+{
+
+    public function indexAction()
+    {
+        return new ViewModel();
+    }
+    /* 
+     * 登陆功能
+     *  */
+    public function loginAction(){
+        try {
+//         $username='admin';
+//         $password='123456';
+        $username = $_POST['username'];
+        $password = $_POST['password'];
+        $ret = array();
+        if ($username == "") {
+            $msg = "用户名为空";
+            $ret['result'] = false;
+            $ret['msg'] = $msg;
+            return new JsonModel($ret);
+        }
+    
+        if (! preg_match("/[\x4E00-\x9FA5\\w]{2,16}/", $username)) {
+            $msg = "用户名需要2~16位的中文，字母或数字";
+            $ret['result'] = false;
+            $ret['msg'] = $msg;
+          return new JsonModel($ret);
+        }
+    
+        if ($password == "") {
+            $msg = "密码为空";
+            $ret['result'] = false;
+            $ret['msg'] = $msg;
+          return new JsonModel($ret);
+        }
+    
+        if (! preg_match("/\\w{6,18}/", $password)) {
+            $msg = "密码长度在6~18位，只能包含字符，数字，字母";
+            $ret['result'] = false;
+            $ret['msg'] = $msg;
+         return new JsonModel($ret);
+        }
+        $user = new User($this->getDbAdapter());
+        $userRet = $user->selectUserPS($username,$password);
+        if($userRet['result']==true&&!empty($userRet['msg'])){
+            $msg=$userRet['msg']['username']."成功登陆";
+            $ret['result'] = true;
+            $ret['msg']=$msg;
+      return new JsonModel($ret);    
+        }
+        else{
+            $userRet = $user->selectUser($username,$password);
+            if($userRet['result']==true&&empty($userRet['msg'])){
+                $msg='不存在账号'.$username;
+                $ret['result'] = true;
+                $ret['msg']=$msg;
+        return new JsonModel($ret);
+            }
+            elseif($userRet['result']==true&&!empty($userRet['msg'])){
+                $msg='密码错误，请重新登陆';
+                $ret['result'] = true;
+                $ret['msg']=$msg;
+           return new JsonModel($ret);
+            }
+            else{
+                return new JsonModel($userRet);
+            }
+            
+        }  } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+      
+    }
+    public function  registerAction(){
+        $username=$_POST['email'];
+        $password1=$_POST['password1'];
+        $password2=$_POST['password2'];
+        $ret=array();
+        $email=$this->checkMain('email',$username);
+        if (!$email){
+            return new JsonModel(array('result' => false,'msg' => '异常:请输入正确的邮箱'));
+        }
+        $pd=$this->checkMain('password',$password1);
+        if (!$pd){
+            return new JsonModel(array('result' => false,'msg' => '异常:'));
+        }
+        
+        
+        
+    }
+    
+  
+
+
+
+
+
+}

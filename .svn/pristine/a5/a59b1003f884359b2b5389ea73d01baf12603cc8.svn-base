@@ -1,0 +1,1587 @@
+<?php
+namespace Usermgr\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use NxCloud\Model\NxCloud;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Model\Base\nxException;
+use Usermgr\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class IndexController extends BaseController
+{
+    const ROUTE_INDEX  = 'usermgr/index';
+    
+    public function indexAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    /**
+     * 根据用户ID获取用户的信息
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function getUserAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if( !isset($userId) ){
+                    return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+                }
+                /*根据用户ID 获取用户的基本信息*/
+                $user = new User($this->getDbAdapter());
+                $userRet = $user->getUserInfo($userId);
+                if(!$userRet['result'] || count($userRet['msg']) == 0){
+                    return new JsonModel(array("result"=>false,'msg'=>"获取数据失败,可能原因:用户不存在"));
+                }
+                $userRet['role'] = $userRet['msg'][0]['role'];
+                $userRet['rolename'] = $userRet['msg'][0]['rolename'];
+                $userRet["msg"][0]['headpic'] = isset($userRet["msg"][0]['headpic'])?$userRet["msg"][0]['headpic']:"/data/avatarResource/common/default.jpg";
+                return new JsonModel($userRet);
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $e = new nxException($e->getMessage(), $e->getCode(), $e->getPrevious());
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 编辑用户 关于
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function editAboutUserAction(){
+        try {
+            /* 获取当前用户id*/
+            $user_session = new Container('user');
+            $userid = $user_session->userId;
+            if( !isset($userid) ){
+                return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+            }
+            if($this->getRequest()->isPost()){
+               
+                $user = new User($this->getDbAdapter());
+             
+                $request = $this->getRequest();
+               
+                /*获取前端的数据，更新到数据库*/
+                $education = $request->getPost('education')?:'';
+                $location = $request->getPost('location')?:'';
+                $skills = $request->getPost('skills')?:'';
+                $signName = $request->getPost('signName')?:'';
+                /* 数据检查 */
+                if(!$this->checkMain("name", $education) && !isset($education)){
+                    return new JsonModel(array("result"=>false,'msg'=>"毕业院校含有不支持的字符"));
+                }
+                 if(!$this->checkMain("name", $location) && !isset($location)){
+                    return new JsonModel(array("result"=>false,'msg'=>"所在地理位置含有不支持的字符"));
+                }
+                $info = array(
+                    'userId' => $userid,
+                    'education' => $education,
+                    'location' => $location,
+                    'skills' => $skills,
+                    "signName" => $signName
+                );
+                $updRet = $user-> updateAboutUserInfo($info);
+                if(!$updRet['result']){
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试ERR02".$updRet['msg']));
+                }
+                return  new JsonModel(array("result"=>true,'msg'=>"修改成功"));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $e = new nxException($e->getMessage(), $e->getCode(), $e->getPrevious());
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+
+    /**
+     * 编辑用户基本信息
+     * @return \Zend\View\Model\JsonModel
+     */
+     public function editUserInfoAction(){
+    	try { 
+    		/* 获取当前用户id*/
+    		$user_session = new Container('user');
+    		$userid = $user_session->userId;
+    		if( !isset($userid) ){
+    		    return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+    		}
+    		if($this->getRequest()->isPost()){
+    		    $user = new User($this->getDbAdapter());
+    		     
+    		    $request = $this->getRequest();
+    		    
+    		    /*获取前端的数据，更新到数据库*/
+    		    $nickname = $request->getPost('nickname')?:'';
+    		    $sex = $request->getPost('sex')?:'';
+    		    $birthday = $request->getPost('birthday')?:null;
+    		    /* 数据检查 */
+    		    if(!isset($nickname) || $nickname == ""){
+    		        return new JsonModel(array("result"=>false,'msg'=>"请输入昵称"));
+    		    }else if(!$this->checkMain("name", $nickname)){
+    		        return new JsonModel(array("result"=>false,'msg'=>"昵称含有不支持的字符"));
+    		    }else if( mb_strlen($nickname, 'utf-8') < 3 || mb_strlen($nickname, 'utf-8') > 10){
+    		        return new JsonModel(array("result"=>false,'msg'=>"昵称长度为3到10个字符"));
+    		    }
+    		    if(isset($birthday) && $birthday != "" && !$this->checkMain("Date", $birthday)){
+    		        return new JsonModel(array("result"=>false,'msg'=>"生日格式有误"));
+    		    }
+    		    if(isset($sex) && $sex != "" && $sex != "man" && $sex != "woman"){
+    		        return new JsonModel(array("result"=>false,'msg'=>"性别输入有误"));
+    		    }
+    		    $info = array(
+    		        'nickname' => $nickname,
+    		        'sex' => $sex,
+    		        'birthday' => $birthday,
+    		        "user" => $userid
+    		    );
+    		    
+    		    $updRet = $user-> updateUserInfo($info);
+    		    if(!$updRet['result']){
+    		        return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试ERR02".$updRet['msg']));
+    		    }
+    		    return  new JsonModel(array("result"=>true,'msg'=>"修改成功"));
+    		}else{
+//     		    return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试ERR03"));
+    		    $response = $this->getResponse();
+    		    $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+    		    $response->setStatusCode(302);
+    		    return $response;//重定向到404页面
+    		}
+    	} catch (\Exception $e) {
+    		$e = new nxException($e->getMessage(), $e->getCode(), $e->getPrevious());
+    		return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+    	}
+    }
+
+    /**
+     * 个人资料 编辑头像
+     */
+    public function editAvatarAction(){
+        try {
+
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId)){
+                return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+            }
+            if($this->getRequest()->isPost()){
+                /* 先判断是否为合法的图片类型 */
+                if ($_FILES['avatar_file']['size'] > 4194304) {
+                    return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+                }
+                $_FILES['avatar_file']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['avatar_file']['name'], '.')), '.'), 1);
+                if (in_array($_FILES['avatar_file']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                    $info = getimagesize($_FILES['avatar_file']['tmp_name']);
+                    if (false === $info || ('gif' == strtolower($_FILES['avatar_file']['extension']) && empty($info['bits']))) {
+                        return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                    }
+                }else{
+                    return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+                }
+
+               /*保存头像的路径*/
+                $ava_filenamePath =  '/data/avatarResource/image';
+                /* 判断目录是否存在，不存在则创建 */
+                if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                    mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+                }
+                /* 文件名，由MD5用户ID生成 */
+                $filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/" . md5($userId) . '.' . $_FILES['avatar_file']['extension'];
+               
+                if(!move_uploaded_file($_FILES['avatar_file']['tmp_name'], $filename)){
+                  /* 保存文件不成功 */
+                  return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                }
+                if(!file_exists($filename)) {
+                  /* 文件不存在 */
+                  return new JsonModel (array("result" => false, "msg" => "头像文件不存在"));
+                }
+                /*提取截取的图片信息*/
+                $avatar_data = json_decode($_POST['avatar_data'],true);
+                $x = (int)$avatar_data['x'];
+                $y = (int)$avatar_data['y'];
+                $width = (int)$avatar_data['width'];
+                $height = (int)$avatar_data['height'];
+                /*获取图片的宽、高和类型*/
+                list($src_width,$src_height,$src_type) = getimagesize($filename);
+               
+                /*根据图片类型保存图片到文件夹并创建头像路径*/
+                if($src_type==2){
+                     $source=imagecreatefromjpeg($filename);
+                }
+                if($src_type==3){
+                     $source=imagecreatefrompng($filename);
+                }
+                $ava_filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension'];
+                /*截取图片*/
+                $new_image = imagecreatetruecolor($width, $height);
+                imagecopy($new_image, $source, 0, 0, $x, $y, $width, $height);
+                /*根据图片类型保存头像到文件夹*/
+                if($src_type==2){
+                    $flag = imagejpeg($new_image,$ava_filename);
+                }
+                if($src_type==3){
+                    $flag = imagepng($new_image,$ava_filename);
+                }
+                if(!$flag){
+                    return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR001"));
+                }
+                /*将头像地址更新到nx_user_info表中*/
+
+               $arr = array(
+                   "userId" => $userId,
+                   "ava_filename"=> $ava_filenamePath . "/s_"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension']
+               );
+               
+               /*压缩资源*/
+               $resPath = $_SERVER['DOCUMENT_ROOT'] .$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension'];
+               $size = $this->resizeImg($resPath, md5($userId) . '_avatar.');
+               $User = new User($this->getDbAdapter());
+               $ret = $User->addUserHeadPic($arr);
+               if(!$ret['result']){
+                   return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR002"));
+               }
+               /*释放内存资源*/
+                imagedestroy($source);
+                imagedestroy($new_image);
+                
+                return new JsonModel(array('result'=>true,'msg'=>"上传头像成功",'url'=>$arr['ava_filename']));
+            }else{
+                return  new ViewModel();
+            }
+        }catch (\Exception $e) {
+            $e = new nxException($e->getMessage(), $e->getCode(), $e->getPrevious());
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+      
+    /**
+     * 增加用户界面
+     */
+    public function addAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    /**
+     * 所有用户界面
+     */
+    public function alluserAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    /**
+     * 管理角色界面
+     */
+    public function roleAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    /**
+     * 获取注册账号时所需的准备数据
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function getRegisterInfoAction()
+    {
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId) ){
+                return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+            }
+            if($this->getRequest()->isPost()){
+                
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/role', $userId);
+                if(!$btnPerArr['result']){
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));  
+                }
+                $btnPerArr = $btnPerArr['msg'];
+                
+                if(!$btnPerArr['getRole']){
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限获取角色'));
+                }
+                
+                $user = new User($this->getDbAdapter());
+                $userInfo = $user->getUserRole($userId);
+                if(!$userInfo['result'] || count($userInfo['msg']) == 0){
+                    return new JsonModel(array('result'=>false,'msg'=>"获取用户信息失败"));
+                }
+                $userInfo = $userInfo['msg'][0];
+                $userRole = $user->getAllUserRole();
+                
+                if(!$userRole['result'] || count($userRole['msg']) == 0){
+                    return new JsonModel(array('result'=>false,'msg'=>"获取角色数据失败"));
+                }
+                return new JsonModel(array('result' => true, 'msg' => $userRole['msg'],'btnPer'=>$btnPerArr,'userLevel'=>$userInfo['ROLE_LEVEL']));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $e = new nxException($e->getMessage(), $e->getCode(), $e->getPrevious());
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 添加用户
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function addUserAction()
+    { 
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId)){
+                    return new JsonModel(array('result' => false, 'msg' => '请先登录'));
+                }
+                $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+                /* 是否点选上传了头像 */
+                if(!empty($_FILES['avatarfile']['tmp_name'])){
+                    /* 先判断是否为合法的图片类型 */
+                    if ($_FILES['avatarfile']['size'] > 4194304) {
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+                    }
+                    $_FILES['avatarfile']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['avatarfile']['name'], '.')), '.'), 1);
+                    if (in_array($_FILES['avatarfile']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                        $info = getimagesize($_FILES['avatarfile']['tmp_name']);
+                        if (false === $info || ('gif' == strtolower($_FILES['avatarfile']['extension']) && empty($info['bits']))) {
+                            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                            return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                        }
+                    }else{
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+                    }
+                }
+
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/add', $userId);
+                if(!$btnPerArr['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));
+                }
+                $btnPerArr = $btnPerArr['msg'];
+                if(!$btnPerArr['addUser']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限增加用户')); 
+                }
+                /*获取数据进行检查*/
+
+                $username = trim($this->getRequest()->getPost('username'));
+                $email = trim($this->getRequest()->getPost('email'));
+                $password = trim($this->getRequest()->getPost('password'));
+                $confirm_password = trim($this->getRequest()->getPost('confirm_password'));
+                $roleid = $this->getRequest()->getPost('role');
+                
+                $user = new User($this->getDbAdapter());
+                
+                if(!isset($username) || $username == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"请输入昵称"));
+                }else if(!$this->checkMain("name", $username)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"昵称含有不支持的字符"));
+                }else if( mb_strlen($username, 'utf-8') < 3 || mb_strlen($username, 'utf-8') > 10){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"昵称长度为3到10个字符"));
+                }
+                /* 邮箱格式合法性检查 */
+                if(mb_strlen($email,'utf-8') > 31 ){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false, 'msg'=>"邮箱长度过长"));
+                }
+               
+                if (!$this->checkMain("email", $email)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '邮箱格式不合法'));
+                }
+                
+                $result = $user->getUserByEmial(array('email' => $email));
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                if(1 == count($result['msg'])){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '该邮箱已注册'));
+                }
+                /* 密码格式合法性检查 */
+                if(!isset($password) || $password == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请填写密码'));
+                }
+                if(!isset($confirm_password) || $confirm_password == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请填写确认密码'));
+                }
+                if($confirm_password != $password){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '两次密码不一致'));
+                }
+                if(mb_strlen($password,'utf-8')>17 || mb_strlen($password,'utf-8')<6){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel (array("result"=>false,"msg"=>"密码长度为6-16位"));
+                }
+                if(!$this->checkMain("password",$password)||!$this->checkMain("password",$password)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel (array("result"=>false,"msg"=>"密码格式错误"));
+                }
+                
+                if(!isset($roleid) || $roleid == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"请为用户选择一个角色"));
+                }
+                if(!$this->checkMain("key", $roleid)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR002"));
+                }
+                /* 权限检查 ,低级用户不能创建高级用户*/
+                $result = $user->getUserRole($userId);
+                if(!$result['result'] || count($result['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR003'));
+                }
+                $roleRet = $user->getRoleByRoleid($roleid);
+                if(!$roleRet['result'] || count($roleRet['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR004'));
+                }
+                if($roleRet['msg'][0]['ROLE_LEVEL'] >= $result['msg'][0]['ROLE_LEVEL']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => "添加失败，您只能添加级别比您的级别".$result['msg'][0]['ROLE_LEVEL']."低的角色用户"));
+                }
+                /*注意密码加密*/
+                /*先添加到user表*/
+                $bcrypt = new Bcrypt();
+                $arrInfo = array('username' => $username, 'email' => $email, 'password' => $bcrypt->create($password));
+                $result = $user->addUser($arrInfo);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '添加失败'));
+                }
+                
+                /*插入user表则处理头像然后再插入info表*/
+                
+                if(!empty($_FILES['avatarfile']['tmp_name'])){
+                    /*获取新建用户的ID*/
+                    $userId = $result['msg'];
+                    /*保存头像的路径*/
+                    $ava_filenamePath =  '/data/avatarResource/image';
+                    /* 判断目录是否存在，不存在则创建 */
+                    if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                        mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+                    }
+                    /* 文件名，由MD5用户ID生成 */
+                    $filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/" . md5($userId) . '.' . $_FILES['avatarfile']['extension'];
+                    $resPath = $_SERVER['DOCUMENT_ROOT'] .$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatarfile']['extension'];
+                    
+                    if(!move_uploaded_file($_FILES['avatarfile']['tmp_name'], $filename)){
+                        /* 保存文件不成功 */
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                    }
+                    if(!copy($filename, $resPath)){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                    }
+                    if(!file_exists($filename) || !file_exists($resPath) ) {
+                        /* 文件不存在 */
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result" => false, "msg" => "头像文件不存在"));
+                    }
+                     
+                    /*压缩资源*/
+                    $size = $this->resizeImg($resPath, md5($userId) . '_avatar.');
+                    $headpic = $ava_filenamePath . "/s_"  . md5($userId) . '_avatar.' . $_FILES['avatarfile']['extension'];
+                }else{
+                    /*默认头像*/
+                    $headpic = "/data/avatarResource/common/default.jpg";
+                }
+                
+                /*将新用户信息插入到userinfo表*/
+                $arrInfo = array(
+                    'userid' => $result['msg'], 
+                    'time' => date('Y-m-d H:i:s'), 
+                    'ip' => '',
+                    'address' => '',
+                    'nickname' => $username,
+                    'email' => $email, 
+                    'head' => $headpic,
+                    'password' => $bcrypt->create($password)
+                );
+                $result = $user->addUserinfo($arrInfo,$roleid);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '添加失败'));
+                }
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+                return new JsonModel(array('result' => true, 'msg' => '添加成功'));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /***
+     * 修改用户信息
+     *
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function editUserAction()
+    {
+        $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId) ){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+                }
+                
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/alluser', $userId);
+                if(!$btnPerArr['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));
+                }
+                $btnPerArr = $btnPerArr['msg'];
+                
+                if(!$btnPerArr['editUser']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限删编辑用户'));
+                }
+                
+                $user = new User($this->getDbAdapter());
+                
+                $username = trim($this->getRequest()->getPost('username'));
+                $email =  trim($this->getRequest()->getPost('email'));
+                $password = trim($this->getRequest()->getPost('password'));
+                $statu =  $this->getRequest()->getPost('statu');
+                $roleid = $this->getRequest()->getPost('role');
+                $userid = $this->getRequest()->getPost('userId');
+    
+                /*检查用户ID*/
+                if (!isset($userid) || $userid == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"请选择要编辑的用户"));
+                }
+                if (!$this->checkMain('key', $userid)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败,用户信息错误"));
+                }
+                /*检查昵称*/
+                if(!isset($username) || $username == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"请输入昵称"));
+                }else if(!$this->checkMain("name", $username)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"昵称含有不支持的字符"));
+                }else if( mb_strlen($username, 'utf-8') < 3 || mb_strlen($username, 'utf-8') > 10){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"昵称长度为3到10个字符"));
+                }
+                /* 邮箱格式合法性检查 */
+                if(mb_strlen($email,'utf-8') > 31 ){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false, 'msg'=>"邮箱长度过长"));
+                }
+                 
+                if (!$this->checkMain("email", $email)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '邮箱格式不合法'));
+                }
+                
+                $result = $user->getUserByEmial(array('email' => $email),$userid);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                if(1 == count($result['msg'])){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '该邮箱已注册'));
+                }
+                /* 密码格式合法性检查 */
+                if(isset($password) && $password != ""){
+                    if(mb_strlen($password,'utf-8')>17 || mb_strlen($password,'utf-8')<6){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result"=>false,"msg"=>"密码长度为6-16位"));
+                    }
+                    if(!$this->checkMain("password",$password)||!$this->checkMain("password",$password)){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result"=>false,"msg"=>"密码格式错误"));
+                    }
+                }
+                /*检查角色ID*/
+                if(!isset($roleid) || $roleid == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"请为用户选择一个角色"));
+                }
+                if(!$this->checkMain("key", $roleid)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR002"));
+                }
+                /*检查状态*/
+                if(!isset($statu) || (0 != $statu && 1 != $statu && 2 != $statu && 3 != $statu)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR003"));
+                }
+                
+                /* 权限检查 ,低级用户不能创建高级用户*/
+                $result = $user->getUserRole($userId);
+                if(!$result['result'] || count($result['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR004"));
+                }
+                
+                /* $userid 传进来的用户id */
+                $ret = $user->getUserRole($userid);
+                if(!$ret['result'] || count($ret['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR005"));
+                }
+                $role = $ret['msg'][0]['ROLE_LEVEL'];
+                
+                /*获取替换的角色的level*/
+                $roleRet = $user->getRoleByRoleid($roleid);
+                if(!$roleRet['result'] || count($roleRet['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR006"));
+                }
+                $roleLv = $roleRet['msg'][0]['ROLE_LEVEL'];
+                
+                if($role >= $result['msg'][0]['ROLE_LEVEL']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '抱歉!您只能更改角色级别比您的级别'.$result['msg'][0]['ROLE_LEVEL']."低的用户的角色"));
+                }
+                if($roleLv >= $result['msg'][0]['ROLE_LEVEL']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '抱歉!您只能将用户的角色更改为比您的级别'.$result['msg'][0]['ROLE_LEVEL']."低的角色"));
+                }
+                
+                $bcrypt = new Bcrypt();
+                $arrInfo = array('username' => $username, 'email' => $email, 'userid' => $userid);
+                if(!isset($password) || $password == ""){
+                    $password = "";
+                }else{
+                    $password = $bcrypt->create($password);
+                }
+                
+                /*先更新user表*/
+                $result = $user->editUser($arrInfo,$password);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR007"));
+                }
+                /*再更新userinfo表*/
+                $arrInfo = array(
+                    'userid' => $userid,
+                    'nickname' => $username,
+                    'email' => $email,
+                    'statu' => $statu,
+                    'roleid' => $roleid
+                );
+                $result = $user->editUserinfo($arrInfo,$password);
+                
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR008"));
+                }
+    
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+    
+                return new JsonModel(array('result' => true, 'msg' => '添加成功'));
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /***
+     * 修改用户角色
+     * 
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function editRoleAction()
+    {
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId)){
+                    return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+                }
+                
+                /*权限检查*/
+                $userModel = new User($this->getDbAdapter());
+                
+                $Userinfo = $userModel->getUserRole($userId);
+                if(!$Userinfo['result'] || count($Userinfo['msg']) == 0){
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                $Userinfo = $Userinfo['msg'][0];
+                if($Userinfo['en'] != "admin" && $Userinfo['en'] != "superadmin"){
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限编辑角色权限'));
+                }
+                
+                $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+                $role_name_ch = $this->getRequest()->getPost('role_name_ch');
+                $role_name_en = $this->getRequest()->getPost('role_name_en');
+                $role_level = (int)$this->getRequest()->getPost('role_level');
+                $role_id = $this->getRequest()->getPost('role_id');
+                
+                /*数据检查*/
+                if(!isset($role_id) || $role_id == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请选择要编辑的角色'));
+                }
+                if(isset($role_id) && !$this->checkMain('key', $role_id)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '编辑失败,角色信息有误ERR001'));
+                }
+                if(!isset($role_name_ch) || $role_name_ch == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请将角色名称填写完整'));
+                }
+                if(!$this->checkMain("name", $role_name_ch)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色名称含有不符合规范'));
+                }
+                if(mb_strlen($role_name_ch, 'utf-8') > 6 || mb_strlen($role_name_ch, 'utf-8') < 2){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"名称在1到6字符长度以内"));
+                }
+                if(!isset($role_name_en) || $role_name_en == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请将角色英文名称填写完整'));
+                }
+                if(!$this->checkMain("rolename", $role_name_en)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色英文名称不符合规范'));
+                }
+                if(mb_strlen($role_name_en, 'utf-8') > 6 || mb_strlen($role_name_en, 'utf-8') < 2){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"英文名称在1到6字符长度以内"));
+                }
+                if(!isset($role_level) || $role_level == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请将角色级别填写完整'));
+                }
+                if(!is_int($role_level)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色级别只能为数字'));
+                }
+                if(!($role_level>0 || $role_level<10)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色级别只能为1到9任一数字'));
+                }
+                
+                /* 权限检查 ,低级用户不能创建高级用户*/
+                if($role_level >= $Userinfo['ROLE_LEVEL']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' =>"操作失败，您只能编辑级别比您的级别".$Userinfo['ROLE_LEVEL']."低的角色"));
+                }
+        
+                $arrInfo = array(
+                    'role_name_ch' => $role_name_ch, 
+                    'role_name_en' => $role_name_en, 
+                    'role_level' => $role_level,
+                    'role_id' => $role_id
+                );
+
+                $result = $userModel->editUserRole($arrInfo);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => $result['msg']));
+                }
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+                return new JsonModel(array('result' => true, 'msg' => '修改成功'));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+        
+    /***
+     * 增加用户角色
+     * 
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function addRoleAction()
+    {
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId) ){
+                    return new JsonModel(array('result' => false, 'msg' => '请先登录'));
+                }
+                /*权限检查*/
+                $userModel = new User($this->getDbAdapter());
+                
+                $Userinfo = $userModel->getUserRole($userId);
+                if(!$Userinfo['result'] || count($Userinfo['msg']) == 0){
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                $Userinfo = $Userinfo['msg'][0];
+                if($Userinfo['en'] != "admin" && $Userinfo['en'] != "superadmin"){
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限增加角色权限'));
+                }
+    
+                $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+                $role_name_ch = $this->getRequest()->getPost('role_name_ch');
+                $role_name_en = $this->getRequest()->getPost('role_name_en');
+                $role_level = (int)$this->getRequest()->getPost('role_level');
+    
+                /*数据检查*/
+                if(!isset($role_name_ch) || $role_name_ch == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请将角色名称填写完整'));
+                }
+                if(!$this->checkMain("name", $role_name_ch)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色名称含有不符合规范'));
+                }
+                if(mb_strlen($role_name_ch, 'utf-8') > 6 || mb_strlen($role_name_ch, 'utf-8') < 2){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"名称在1到6字符长度以内"));
+                }
+                if(!isset($role_name_en) || $role_name_en == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请将角色英文名称填写完整'));
+                }
+                if(!$this->checkMain("rolename", $role_name_en)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色英文名称不符合规范'));
+                }
+                if(mb_strlen($role_name_en, 'utf-8') > 6 || mb_strlen($role_name_en, 'utf-8') < 2){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"英文名称在1到6字符长度以内"));
+                }
+                if(!isset($role_level) || $role_level == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请将角色级别填写完整'));
+                }
+                if(!is_int($role_level)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色级别只能为数字'));
+                }
+                if(!($role_level>0 || $role_level<10)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色级别只能为1到9任一数字'));
+                }
+                /* 权限检查 ,低级用户不能创建高级用户*/
+                if($role_level >= $Userinfo['ROLE_LEVEL']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' =>"操作失败，您只能增加级别比您的级别".$Userinfo['ROLE_LEVEL']."低的角色"));
+                }
+    
+                $arrInfo = array(
+                    'role_name_ch' => $role_name_ch,
+                    'role_name_en' => $role_name_en,
+                    'role_level' => $role_level
+                );
+                $result = $userModel->addUserRole($arrInfo);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => $result['msg']));
+                }
+    
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+                return new JsonModel(array('result' => true, 'msg' => '添加成功'));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+
+    /***
+     * 删除用户角色
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function deleteRoleAction()
+    {
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId) ){
+                    return new JsonModel(array('result' => false, 'msg' => '请先登录'));
+                }
+                /*权限检查*/
+                $userModel = new User($this->getDbAdapter());
+                $Userinfo = $userModel->getUserRole($userId);
+                if(!$Userinfo['result'] || count($Userinfo['msg']) == 0){
+                     return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                $Userinfo = $Userinfo['msg'][0];
+                if($Userinfo['en'] != "admin" && $Userinfo['en'] != "superadmin"){
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限删除角色权限'));
+                }
+                
+                $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+                $role_id = $this->getRequest()->getPost('role_id');
+                $role_level = (int)$this->getRequest()->getPost('role_level');
+                
+                /*数据检查*/
+                if(!isset($role_id) || $role_id == ""){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请选择要删除的角色'));
+                }
+                if(isset($role_id) && !$this->checkMain('key', $role_id)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '删除失败,角色信息有误ERR001'));
+                }
+                if(!isset($role_level) || $role_level == "" || !is_int($role_level) || !($role_level>0 || $role_level<10)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '删除失败,角色信息有误ERR002'));
+                }
+                /* 权限检查 ,低级用户不能删除高级用户*/
+                if($Userinfo['ROLE_LEVEL'] <= $role_level){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => "删除失败，您只能删除级别比您的级别".$Userinfo['ROLE_LEVEL']."低的角色"));
+                }
+    
+                $arrInfo = array('role_id' => $role_id);
+                $result = $userModel->deleteUserRole($arrInfo);
+                if(!$result['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR002'));
+                }
+    
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+    
+                return new JsonModel(array('result' => true, 'msg' => '删除成功'));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /***
+     * 获取所有用户信息
+     *
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function getAllUserAction()
+    {
+        try {
+            if ($this->getRequest()->getPost()){
+                
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId) ){
+                    return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+                }
+                
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/alluser', $userId);
+                if(!$btnPerArr['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));
+                }
+                $btnPerArr = $btnPerArr['msg'];
+
+                if(!$btnPerArr['getUser']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限获取用户列表'));
+                }
+                
+                $user = new User($this->getDbAdapter());
+                
+                /*获取用户*/
+                $userAll = $user->getAllUser();
+                if(!$userAll['result']){
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                foreach ($userAll['msg'] as $key=> $value){
+                    $userAll['msg'][$key]['check'] = false;
+                }
+                /*获取角色*/
+                $roleRet = $user->getAllUserRole();
+                if(!$roleRet['result']){
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR002'));
+                }
+                return new JsonModel(array('result' => true, 'msg' => array('userList'=>$userAll['msg'],'roleList'=>$roleRet['msg']),'btnPer'=>$btnPerArr));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /***
+     * 删除用户信息
+     *
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function deleteUserAction()
+    {
+        $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+
+                if(!isset($userId) ){
+                    return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+                }
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/alluser', $userId);
+                if(!$btnPerArr['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));
+                }
+                $btnPerArr = $btnPerArr['msg'];
+                
+                if(!$btnPerArr['delUser']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限删除用户'));
+                }
+                $user = new User($this->getDbAdapter());
+                
+                $useridArr = $this->getRequest()->getPost('userid');
+    
+                /*判断数据是否正确*/
+    			if(!isset($useridArr) || !is_array($useridArr)){
+    			    return new JsonModel(array('result'=>false,'msg'=>"用户信息有误ERR001"));
+    			}
+    			if(count($useridArr) == 0){
+    			    return new JsonModel(array('result'=>false,'msg'=>"请选择要删除的用户"));
+    			}
+                
+    			$result = $user->getUserRole($userId);
+    			if(!$result['result'] || count($result['msg']) == 0){
+    			    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+    			}
+    			
+                foreach ($useridArr as $key=>$userid){
+                    /* 权限检查 ,低级用户不能删除高级用户*/
+
+                    $_ret = $user->getUserRole($userid);
+                    if(!$_ret['result'] || count($_ret['msg']) == 0){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR002'));
+                    }
+                    $role_level = $_ret['msg'][0]['ROLE_LEVEL'];
+                    
+                    if($result['msg'][0]['ROLE_LEVEL'] <= $role_level){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => "删除失败，您只能删除角色级别比您的级别".$result['msg'][0]['ROLE_LEVEL']."低的用户"));
+                    }
+                    
+                    $_ret = $user->deleteUser($userid);
+                    if(!$_ret['result']){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR003'));
+                    }
+                }
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+                return new JsonModel(array('result' => true, 'msg' => '删除成功'));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /***
+     * 批量修改用户角色
+     *
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function changeBatchRolesAction()
+    {
+        $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+    
+                if(!isset($userId) ){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请先登录'));
+                }
+                
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/alluser', $userId);
+                if(!$btnPerArr['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));
+                }
+                $btnPerArr = $btnPerArr['msg'];
+                
+                if(!$btnPerArr['editUser']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限编辑用户'));
+                }
+                
+                
+                $useridArr = $this->getRequest()->getPost('userid');
+                $newrole = $this->getRequest()->getPost('newrole');
+                
+                /*判断数据是否正确*/
+                if(!isset($useridArr) || !is_array($useridArr)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"用户信息有误ERR001"));
+                }
+                if(count($useridArr) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"请选择要设置角色的用户"));
+                }
+                if(!isset($newrole) || !$this->checkMain('key', $newrole)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"请选择替换的角色"));   
+                }
+                
+                $user = new User($this->getDbAdapter());
+                /*获取当前用户的角色级别*/
+                $result = $user->getUserRole($userId);
+                if(!$result['result'] || count($result['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                /*获取分配的新角色的级别*/
+                $roleRet = $user->getRoleByRoleid($newrole);
+                if(!$roleRet['result'] || count($roleRet['msg']) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR002'));
+                }
+                if($roleRet['msg'][0]['ROLE_LEVEL'] >= $result['msg'][0]['ROLE_LEVEL']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '抱歉!您只能将用户的角色更改为比您的级别'.$result['msg'][0]['ROLE_LEVEL']."低的角色"));
+                }
+                foreach ($useridArr as $key=>$userid){
+                    /* 权限检查 ,低级用户不能创建高级用户*/ 
+                    /* 查看前台传过来的用户权限 */
+                    $_ret = $user->getUserRole($userid);
+                    if(!$_ret['result'] || count($_ret['msg']) == 0){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR003'));
+                    }
+                    $role_level = $_ret['msg'][0]['ROLE_LEVEL'];
+                    
+                    if($role_level >= $result['msg'][0]['ROLE_LEVEL']){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => '抱歉!您只能更改角色级别比您的级别'.$result['msg'][0]['ROLE_LEVEL']."低的用户"));
+                    }
+                    
+                    $arrInfo = array(
+                        'newrole' => $newrole,
+                        'userid' => $userid
+                    );
+                    $_ret = $user->editUserRoleId($arrInfo);
+                    if(!$_ret['result']){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR004'));
+                    }
+                }
+                
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+    
+                return new JsonModel(array('result' => true, 'msg' => '设置角色成功'));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 获取左侧栏
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function getnavPermissionListAction(){
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId) ){
+                return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+            }
+    
+            if($this->getRequest()->isPost()){
+    
+                $userModel = new User($this->getDbAdapter());
+                
+                /*获取左侧栏父级*/
+                $navRet = $userModel->getNavListByUserId($userId);
+                if(!$navRet['result']){
+                    return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR001'));
+                }
+                foreach ($navRet['msg'] as $key => $val){
+                    $_ret = $userModel->getNavListByUserId($userId,$val['id']);
+                    if(!$_ret['result']){
+                        return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR002'));
+                    }
+                    $navRet['msg'][$key]['childnode'] = $_ret['msg'];
+                }
+                return new JsonModel(array('result'=>true,'msg'=>$navRet['msg']));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+//                 return new JsonModel(array('result'=>false,'msg'=>'请用POST方式传入参数'));
+            }
+    
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 获取可以可分配的权限
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function getButtonPermissionListAction(){
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId) ){
+                return new JsonModel(array('result' => false, 'msg' => '登录超时'));
+            }
+            
+            if($this->getRequest()->isPost()){
+                
+                $userModel = new User($this->getDbAdapter());
+                $Userinfo = $userModel->getUserRole($userId);
+                if(!$Userinfo['result'] || count($Userinfo['msg']) == 0){
+                    $response = $this->getResponse();
+                    $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                    $response->setStatusCode(302);
+                    return $response;//重定向到404页面
+                }
+                $Userinfo = $Userinfo['msg'][0];
+                if($Userinfo['en'] != "admin" && $Userinfo['en'] != "superadmin"){
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限获取角色权限'));
+                }
+                
+                $request = $this->getRequest();
+                $role = $request->getPost('roleid');
+                
+                if(!isset($role) || !$this->checkMain("key", $role)){
+                    return new JsonModel(array('result'=>false,'msg'=>'请选择要授权的角色'));
+                }
+                
+                /*获取*/
+                $navRet = $userModel->getNavlist();
+                
+                if(!$navRet['result']){
+                    return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR001'));
+                }
+                
+                foreach ($navRet['msg'] as $key => $val){
+                    $navRet['msg'][$key]['check'] = false;
+                    $childRet = $userModel->getNavlist($val['id']);
+                    if(!$childRet['result']){
+                        return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR003'));
+                    }
+                    /*获取操作*/
+                    foreach($childRet['msg'] as $k=>$v){
+                        $childRet['msg'][$k]['check'] = false;
+                        $_ret = $userModel->getFunctionBynavid($v['id'],$role);
+                        if(!$_ret['result']){
+                            return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR004'));
+                        }
+                        foreach ($_ret['msg'] as $p => $q){
+                            if(isset($q['pid']) && $q['pid'] != ""){
+                                $_ret['msg'][$p]['check'] = true;
+                                $childRet['msg'][$k]['check'] = true;
+                                $navRet['msg'][$key]['check'] = true;
+                            }else{
+                                $_ret['msg'][$p]['check'] = false;
+                            }
+                        }
+                        $childRet['msg'][$k]['childnode'] = $_ret['msg'];
+                    }
+                    $navRet['msg'][$key]['childnode'] = $childRet['msg'];
+                }
+                return new JsonModel(array('result'=>true,'msg'=>$navRet['msg']));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+//                 return new JsonModel(array('result'=>false,'msg'=>'请用POST方式传入参数'));
+            }
+            
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 保存授权列表
+     * @return \Zend\View\Model\JsonModel
+     */
+    public function savePermissionListAction(){
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId) ){
+                return new JsonModel(array('result' => false, 'msg' => '请先登录'));
+            }
+            if($this->getRequest()->isPost()){
+                
+                $userModel = new User($this->getDbAdapter());
+                $Userinfo = $userModel->getUserRole($userId);
+                if(!$Userinfo['result'] || count($Userinfo['msg']) == 0){
+                    $response = $this->getResponse();
+                    $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                    $response->setStatusCode(302);
+                    return $response;//重定向到404页面
+                }
+                $Userinfo = $Userinfo['msg'][0];
+                if($Userinfo['en'] != "admin" && $Userinfo['en'] != "superadmin"){
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限更改角色权限'));
+                }
+                
+                $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+                $request = $this->getRequest();
+                $fun = $request->getPost('fun')?:[];
+                $nav = $request->getPost('nav')?:[];
+                $role = $request->getPost('role');
+                $role_level = $request->getPost('rolelevel');
+                
+                /*数据检查*/
+                if(!isset($role) || !$this->checkMain("key", $role)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"角色信息有误,请刷新页面重试ERR000"));
+                }
+                if(!isset($fun) || !is_array($fun)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败.请刷新页面重试ERR001"));
+                }
+                if(!isset($nav) || !is_array($nav)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR002"));
+                }
+                if(!isset($role_level) || $role_level == "" || !is_int($role_level) || !($role_level>0 || $role_level<10)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '角色信息有误,请刷新页面重试ERR003'));
+                }
+                /* 权限检查 ,低级用户不能删除高级用户*/
+                if($Userinfo['ROLE_LEVEL'] <= $role_level){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => "保存失败，您只能保存授权级别比您的级别".$Userinfo['ROLE_LEVEL']."低的角色"));
+                }
+                
+                /*数据插入*/
+                
+                /*删除原有权限*/
+                $_ret = $userModel->delFunRolelistByroleid($role);
+                if(!$_ret['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR004"));
+                }
+                
+                $_ret = $userModel->delNavRolelistByroleid($role);
+                if(!$_ret['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR005"));
+                }
+                /*插入权限*/
+                /*插入func_and_role*/
+                if(count($fun) > 0){
+                    foreach ($fun as $key => $val){
+                        if(0 == $key){
+                            $sql = "INSERT INTO nx_func_and_role(FUNCTION_ID,ROLE_ID) VALUES ($val,$role)";
+                        }else{
+                            $sql .= ",($val,$role)";
+                        }
+                    }
+                    $_ret = $userModel->addRoleList($sql);
+                    if(!$_ret['result']){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR006"));
+                    }  
+                }
+                /*插入nav_and_role*/
+                if(count($nav) > 0){
+                    foreach ($nav as $key => $val){
+                        if(0 == $key){
+                            $sql = "INSERT INTO nx_nav_and_role (NAV_ID,ROLE_ID) VALUES ($val,$role)";
+                        }else{
+                            $sql .= ",($val,$role)";
+                        }
+                    }  
+                    $_ret = $userModel->addRoleList($sql);
+                    if(!$_ret['result']){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR007"));
+                    }
+                }
+
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+                return new JsonModel(array('result'=>true,'msg'=>"保存成功"));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+//                 return new JsonModel(array('result'=>false,'msg'=>"请用POST方式传入参数"));
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+    
+    
+    public function rejectHeadPicAction(){
+        try {
+            if ($this->getRequest()->isPost()){
+                
+                $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+                
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId) ){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '请先登录'));
+                }
+                /*权限检查和获取*/
+                $btnPerArr = $this->getPermisson('/usermgr/index/alluser', $userId);
+                if(!$btnPerArr['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>$btnPerArr['msg'] == '500' ?"操作失败,请刷新页面重试ERR00":"抱歉,您所在的角色没有权限访问"));
+                }
+                $btnPerArr = $btnPerArr['msg'];
+                
+                if(!$btnPerArr['editUser']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>'抱歉!您所在的角色没有权限删编辑用户'));
+                }
+                $request = $this->getRequest();
+                $userids = $request->getPost('userids');
+                
+                $user = new User($this->getDbAdapter());
+                
+                /*判断数据是否正确*/
+                if(!isset($userids) || !is_array($userids)){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"用户信息有误ERR001"));
+                }
+                if(count($userids) == 0){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result'=>false,'msg'=>"请选择要驳回头像的用户"));
+                }
+                
+                $result = $user->getUserRole($userId);
+                if(!$result['result'] || count($result['msg']) == 0){
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR001'));
+                }
+                
+                
+                foreach ($userids as $key=>$userid){
+                    /* 权限检查 ,低级用户不能删除高级用户*/
+                
+                    $_ret = $user->getUserRole($userid);
+                    if(!$_ret['result'] || count($_ret['msg']) == 0){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR002'));
+                    }
+                    $role_level = $_ret['msg'][0]['ROLE_LEVEL'];
+                
+                    if($result['msg'][0]['ROLE_LEVEL'] <= $role_level){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel(array('result' => false, 'msg' => "驳回失败，您只能驳回角色级别比您的级别".$result['msg'][0]['ROLE_LEVEL']."低的用户"));
+                    }
+                }
+                $arr = array(
+                    "userId" => implode(",",$userids),
+                    "ava_filename"=> '/data/avatarResource/common/default.jpg'
+                );
+                $_ret = $user->addUserHeadPic($arr);
+                if(!$_ret['result']){
+                    $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array('result' => false, 'msg' => '操作失败,请刷新页面重试ERR003'));
+                }
+                $this->getDbAdapter()->getDriver()->getConnection()->commit();
+                
+                return new JsonModel(array('result'=>true,'msg'=>"驳回成功"));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+            return new JsonModel(array('result' => false, 'msg' => $e->getMessage()));
+        }
+    }
+}

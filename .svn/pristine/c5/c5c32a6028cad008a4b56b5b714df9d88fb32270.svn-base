@@ -1,0 +1,679 @@
+<?php
+namespace Admin\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Admin\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class IndexController extends BaseController
+{
+    const ROUTE_INDEX  = 'admin/index';
+    
+    /**
+     * 后台主页左侧数据
+     * {@inheritDoc}
+     * @see \Zend\Mvc\Controller\AbstractActionController::indexAction()
+     */
+    public function indexAction()
+    {
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId)){
+                return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+            }
+            /*获取用户头像等信息*/
+            $userModel = new User($this->getDbAdapter());
+            $userRet = $userModel->selectUserById($userId);
+            if(!$userRet['result'] || count($userRet['msg']) == 0){
+                return new JsonModel(array("result"=>false,'msg'=>"用户不存在"));
+            }
+            
+            return array(
+                'user'=>substr($userRet["msg"][0]['username'], 0, strpos($userRet["msg"][0]['username'], '@')),
+                'role'=>$userRet["msg"][0]['flag'] == 1 ?"管理员":"普通用户",
+                'flag'=>$userRet["msg"][0]['flag'],
+                'headpic' =>isset($userRet["msg"][0]['headpic'])?$userRet["msg"][0]['headpic']:"/data/avatarResource/common/default.jpg"
+            );
+            
+        }catch (\Exception $e) {
+            $response = $this->getResponse();
+            $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/500.html");
+            $response->setStatusCode(302);
+            return $response;//重定向到500页面
+        }
+    }
+    
+    public function homeAction(){
+        try {
+            $userModel = new User($this->getDbAdapter());
+            $picret = $userModel->getFrontPic();
+            if(!$picret['result']){
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+            $view = new ViewModel(array('pic'=>$picret['msg']));
+            return $view;
+            
+        }catch (\Exception $e) {
+            $response = $this->getResponse();
+            $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/500.html");
+            $response->setStatusCode(302);
+            return $response;//重定向到500页面
+        }
+    }
+    
+    
+    /**
+     * 注册界面
+     * @return \Zend\View\Model\ViewModel
+     */
+    public function registerAction()
+    {
+        /*查看用户是否登录*/
+        $user_session = new Container('user');
+        $userId = $user_session->userId;
+        $userName = $user_session->userName;
+        if(isset($userId)){
+            header("X-Frame-Options: deny");  
+            header("X-XSS-Protection: 0");  
+            header("Location: http://" . $_SERVER['HTTP_HOST']);
+            exit;
+        }
+        else{
+            /* 实例化模型 */
+            $view = new ViewModel();
+            return $view;
+        }
+    }
+    public function logoutAction(){
+        try {
+            $user_session = new Container('user');
+            $user_session->getManager()->getStorage()->clear('user');
+            unset($_SESSION['user']);
+            header("X-Frame-Options: deny");
+            header("X-XSS-Protection: 0");
+            header("Location: http://" . $_SERVER['HTTP_HOST']);
+            exit;
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+    /**
+     * 课程列表
+     * @return \Zend\View\Model\ViewModel|\Zend\View\Model\JsonModel
+     */
+    public function coursemgrAction(){
+        try {
+            return new ViewModel();
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+    
+    /**
+     * 首页轮播
+     * @return \Zend\View\Model\ViewModel|\Zend\View\Model\JsonModel
+     */
+    public function frontpicAction(){
+        try {
+            return new ViewModel();
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        } 
+    }
+    
+    /**
+     * 网站设置
+     */
+    public function settingAction(){
+        try {
+            $userModel = new User($this->getDbAdapter());
+            $ret = $userModel->getWebSetting();
+            if(!$ret['result']){
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+            if(count($ret['msg']) == 0){
+                $ret['msg'][0] = array(
+                    'web_logo'=>"/logo.jpg",
+                    "web_title"=>"课程设计",
+                    "web_keyword"=>"",
+                    "web_keycontent"=>"",
+                    "web_num"=>""
+                );
+            }
+            return new ViewModel(array("common"=>$ret['msg'][0] ));
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+    
+  /**
+  * 查看课程列表
+  */
+   public function checkcourseAction(){
+       try {
+          $user_session = new Container('user');
+          $userId = $user_session->userId;
+          $email = $user_session->userId;
+          $user = new User($this->getDbAdapter());
+          $userRet = $user->selectAuthority($userId);
+          if($userRet['result']){
+              if(count($userRet['msg']) == 0){
+                  return new JsonModel(array('result'=>false,'msg'=>" 用户不存在"));
+              }
+              if($userRet['msg'][0]["flag"]==1){
+                  $courseRet = $user->selectCourse('all');
+              }else{
+                  $courseRet = $user->selectCourse($userId);
+              }
+              $courseRet['total'] = count($courseRet['msg']);
+              foreach ($courseRet['msg'] as $key=> $value){
+                  $courseRet['msg'][$key]['check'] = false;
+              }
+              $userRet = $user->selectAllCourseCl();
+              if(!$userRet['result']){
+                  return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR001"));
+              }
+              $courseRet['coucl'] = $userRet['msg'];
+              return new JsonModel($courseRet);
+          }else{
+              return new JsonModel(array("result" => false, "msg" =>"获取数据操作失败，请刷新页面重试"));
+          }
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }
+       
+   }
+
+   
+   /**
+    * 创建课程
+    * @return \Zend\View\Model\JsonModel|\Zend\Stdlib\ResponseInterface
+    */
+   public function createcourseAction(){
+       try {
+           if($this->getRequest()->isPost()){
+               $user_session = new Container('user');
+               $userId = $user_session->userId;
+               if(!isset($userId)){
+                   return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+               }
+           
+               /*检查标题,关键字,icp等信息*/
+               $request = $this->getRequest();
+               $title = $request->getPost('name');
+               $time = $request->getPost('time');
+               $keycontent = $request->getPost('keycontent');
+               $type = $request->getPost('type');
+               $arr = array(
+                   "title" => $title,
+                   "time" => $time,
+                   "keycontent" => $keycontent,
+                   "type"=>$type
+               );
+               $userModel = new User($this->getDbAdapter());
+               /*将信息插入数据库中*/
+               $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+               $ret = $userModel->saveCouInfo($arr);
+               if(!$ret['result']){
+                   $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                   return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR001"));
+               }
+               $arr['id'] = $ret['msg'];
+               
+               /*检查图像信息*/
+               /*保存路径*/
+               $savePath =  '/data/courseResource';
+               /* 判断目录是否存在，不存在则创建 */
+               if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $savePath)) {
+                   mkdir($_SERVER['DOCUMENT_ROOT'] . $savePath, 0755, true); // 第三个参数为true即可以创建多极目录
+               }
+               /*保存logo*/
+               if(!empty($_FILES['logofile']['tmp_name'])){
+           
+                   if ($_FILES['logofile']['size'] > 4194304) {
+                       $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                       return new JsonModel(array("result"=>false,'msg'=>"上传的文件体积超过了限制 最大不能超过4M"));
+                   }
+           
+                   $_FILES['logofile']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['logofile']['name'], '.')), '.'), 1);
+           
+                   if (in_array($_FILES['logofile']['extension'], array('jpg', 'jpeg', 'bmp', 'png', 'swf'))) {
+                       $info = getimagesize($_FILES['logofile']['tmp_name']);
+                       if (false === $info || ('gif' == strtolower($_FILES['logofile']['extension']) && empty($info['bits']))) {
+                           $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                           return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                       }
+                   }else{
+                       $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                       return new JsonModel(array("result"=>false,'msg'=>"上传的文件格式不正确 仅支持 jpg，bmp，png"));
+                   }
+           
+                   /* 文件名*/
+                   $logoname = $_SERVER['DOCUMENT_ROOT'].$savePath . "/" .md5($arr['id']) . "." . $_FILES['logofile']['extension'];
+                   /*进行图片保存*/
+                   if(!move_uploaded_file($_FILES['logofile']['tmp_name'], $logoname)){
+                       /* 保存文件不成功 */
+                       $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                       return new JsonModel (array("result" => false, "msg" => "保存图片失败ERR001"));
+                   }
+                   if(!file_exists($logoname)) {
+                       /* 文件不存在 */
+                       $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                       return new JsonModel (array("result" => false, "msg" => "保存图片失败ERR002"));
+                   }
+                   $logosize = $this->resizeImg($logoname, md5($arr['id']).".");
+                   $arr['photo'] = $savePath . "/s_" .md5($arr['id']) ."." . $_FILES['logofile']['extension'];
+               }else{
+                   $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                    return new JsonModel(array("result" => false,"msg" => "操作失败:请选择课程图片"));
+               }
+               $ret = $userModel->updateCouInfo($arr);
+               if(!$ret['result']){
+                   $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                   return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR002".$ret['msg'],'arr'=>$arr));
+               }
+               $this->getDbAdapter()->getDriver()->getConnection()->commit();
+               return new JsonModel(array("result" => true,"msg" => "创建成功"));
+           }else{
+               $response = $this->getResponse();
+               $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+               $response->setStatusCode(302);
+               return $response;//重定向到500页面
+           }
+           
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }
+   }
+   
+   /**
+    * 获取课程分类
+    * @return \Zend\View\Model\JsonModel|\Zend\View\Model\ViewModel
+    */
+   public function couclassifyAction(){
+       try {
+           $user_session = new Container('user');
+           $userId = $user_session->userId;
+           if(!isset($userId)){
+               return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+           }
+           /*获取一级课程分类*/
+           $userModel = new User($this->getDbAdapter());
+           $userRet = $userModel->selectCourseCl("");
+           if(!$userRet['result']){
+               return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR001"));
+           }
+           foreach ($userRet['msg'] as $key=>$value){
+              $_ret =  $userModel->selectCourseCl($value['cl_id']);
+              if(!$_ret['result']){
+                  return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR002"));
+              }
+              $userRet['msg'][$key]['childnode'] = $_ret['msg'];
+           }
+           if($this->getRequest()->isPost()){
+               return new JsonModel(array('result'=>true,'msg'=>$userRet['msg']));
+           }
+           return new ViewModel(array('msg'=>$userRet['msg']));
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }
+   }
+   
+   /**
+    * 新建课程分类
+    */
+   public function addcouclassifyAction(){
+          try {
+           $user_session = new Container('user');
+           $userId = $user_session->userId;
+           if(!isset($userId)){
+               return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+           }
+           $name = $this->getRequest()->getPost('name');
+           if(!isset($name) || $name == ""){
+               return new JsonModel(array('result'=>false,'msg'=>"请输入名称"));
+           }
+           if(!$this->checkMain("name", $name)){
+               return new JsonModel(array('result'=>false,'msg'=>"名称含有不支持字符"));
+           }
+           /*获取一级课程分类*/
+           $userModel = new User($this->getDbAdapter());
+           $checkRet = $userModel->checkClexist($name);
+           if(!$checkRet['result']){
+               return new JsonModel(array('result'=>false,'msg'=>"操作失败,刷新页面重试ERR001".$checkRet['msg']));
+           }
+           if(0 != count($checkRet['msg'])){
+               return new JsonModel(array('result'=>false,'msg'=>"操作失败,该名称已被占用"));
+           }
+           $addRet = $userModel->addCl($name);
+           if(!$addRet['result']){
+               return new JsonModel(array('result'=>false,'msg'=>"操作失败,刷新页面重试ERR002"));
+           }
+           return new JsonModel(array('result'=>true,'msg'=>"添加成功"));
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }
+   }
+   
+   /**
+    * 保存列表
+    */
+   public function saveCllistAction(){
+       try {
+           $user_session = new Container('user');
+           $userId = $user_session->userId;
+           if(!isset($userId)){
+               return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+           }
+           $data = $this->getRequest()->getPost('data');
+           if(!isset($data) || !is_array($data)){
+               return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR001'));
+           }
+           $userModel = new User($this->getDbAdapter());
+           $dataArr = [];
+           $l = 0;
+           /*组合数据*/
+           for($i=0; $i<count($data); $i++){
+               $dataArr[$l] = [];
+               $dataArr[$l]['parent'] = null;
+               $dataArr[$l]['children'] = $data[$i]['id'];
+               $l++;
+               if(isset($data[$i]["children"])){
+                   for($j=0; $j<count($data[$i]["children"]); $j++){
+                       $dataArr[$l] = [];
+                       $dataArr[$l]['parent'] = $data[$i]['id'];
+                       $dataArr[$l]['children'] = $data[$i]["children"][$j]["id"];
+                       $l++;
+                       if(isset($data[$i]["children"][$j]["children"])){
+                           for($k=0; $k<count($data[$i]["children"][$j]["children"]); $k++){
+                               $dataArr[$l] = [];
+                               $dataArr[$l]['parent'] = $data[$i]["children"][$j]["id"];
+                               $dataArr[$l]['children'] = $data[$i]["children"][$j]["children"][$k]["id"];
+                               $l++;
+                           }
+                       }
+                   }
+               }
+           }
+           $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+           foreach ($dataArr as $key => $value){
+               $_ret = $userModel->saveClList($value);
+               if(!$_ret['result']){
+                   $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                   return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR002'));
+               }
+           }
+           $this->getDbAdapter()->getDriver()->getConnection()->commit();
+           return new JsonModel(array('result'=>true,'msg'=>'保存成功'));
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       } 
+   }
+   
+   /**
+    * 保存网址配置
+    * @return \Zend\View\Model\JsonModel|\Zend\Stdlib\ResponseInterface
+    */
+   public function saveWebSettingAction(){
+      try {
+          $user_session = new Container('user');
+          $userId = $user_session->userId;
+          if(!isset($userId)){
+              return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+          }
+          if($this->getRequest()->isPost()){
+              $userModel = new User($this->getDbAdapter());
+          
+              $webModel = new User($this->getDbAdapter());
+              $commonArr = $webModel->getWebSetting();
+              if(!$commonArr['result']){
+                  return new JsonModel(array('result'=>false,'msg'=>"获取配置失败"));
+              }
+              if(count($commonArr['msg']) == 0){
+                  $commonArr['msg'][0] = array(
+                      'web_logo'=>"/logo.jpg",
+                      "web_title"=>"课程设计",
+                      "web_keyword"=>"",
+                      "web_keycontent"=>"",
+                      "web_num"=>""
+                  );
+              }
+          
+              /*先检查之前的logo 和icon 是否有误*/
+              if(isset($commonArr['msg'][0]['web_logo'])){
+                  if(file_exists($_SERVER['DOCUMENT_ROOT'].$commonArr['msg'][0]['web_logo'])){
+                      $info = getimagesize($_SERVER['DOCUMENT_ROOT'].$commonArr['msg'][0]['web_logo']);
+                      if (false === $info) {
+                          $commonArr['msg'][0]['web_logo'] = "";
+                      }
+                  }else{
+                      $commonArr['msg'][0]['web_logo'] = "";
+                  }
+              }
+          
+              /*检查标题,关键字,icp等信息*/
+              $request = $this->getRequest();
+              $title = $request->getPost('webtitle');
+              $keyword = $request->getPost('webkeyword');
+              $keycontent = $request->getPost('webkeycontent');
+              $icpnum = $request->getPost('webicpnum');
+          
+              if(!isset($title) || $title == "" || !$this->checkMain("name", $title)){
+                  return new jsonModel(array('result'=>false,'msg'=>"网站标题不能为空,且不能包含特殊字符"));
+              }
+          
+              if(mb_strlen($title, 'utf-8') > 15 || mb_strlen($title, 'utf-8') < 1){
+                  return new JsonModel(array("result"=>false,'msg'=>"标题在1到15字符以内"));
+              }
+          
+              if(mb_strlen($keyword, 'utf-8') > 100){
+                  return new JsonModel(array("result"=>false,'msg'=>"关键字在100字符以内"));
+              }
+          
+              if(mb_strlen($keycontent, 'utf-8') > 100){
+                  return new JsonModel(array("result"=>false,'msg'=>"描述在100字符以内"));
+              }
+          
+              if(empty($_FILES['logofile']['tmp_name']) && (!isset($commonArr['msg'][0]['web_logo']) || $commonArr['msg'][0]['web_logo'] == "")){
+                  return new JsonModel(array("result"=>false,'msg'=>"请补充logo信息"));
+              }
+          
+          
+              $arr = array(
+                  "title" => $title,
+                  "keyword" => $keyword,
+                  "keycontent" => $keycontent,
+                  "icpnum" => $icpnum
+              );
+          
+              /*检查图像信息*/
+              /*保存网站logo,icon的路径*/
+              $savePath =  '/data/webResource';
+              /* 判断目录是否存在，不存在则创建 */
+              if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $savePath)) {
+                  mkdir($_SERVER['DOCUMENT_ROOT'] . $savePath, 0755, true); // 第三个参数为true即可以创建多极目录
+              }
+              /*保存logo*/
+              if(!empty($_FILES['logofile']['tmp_name'])){
+          
+                  if ($_FILES['logofile']['size'] > 4194304) {
+                      return new JsonModel(array("result"=>false,'msg'=>"上传的logo文件体积超过了限制 最大不能超过4M"));
+                  }
+          
+                  $_FILES['logofile']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['logofile']['name'], '.')), '.'), 1);
+          
+                  if (in_array($_FILES['logofile']['extension'], array('jpg', 'jpeg', 'bmp', 'png', 'swf'))) {
+                      $info = getimagesize($_FILES['logofile']['tmp_name']);
+                      if (false === $info || ('gif' == strtolower($_FILES['logofile']['extension']) && empty($info['bits']))) {
+                          return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                      }
+                  }else{
+                      return new JsonModel(array("result"=>false,'msg'=>"上传的logo文件格式不正确 仅支持 jpg，bmp，png"));
+                  }
+          
+                  /* 文件名*/
+                  $logoname = $_SERVER['DOCUMENT_ROOT'].$savePath . "/" . "logo." . $_FILES['logofile']['extension'];
+                  /*进行图片保存*/
+                  if(!move_uploaded_file($_FILES['logofile']['tmp_name'], $logoname)){
+                      /* 保存文件不成功 */
+                      return new JsonModel (array("result" => false, "msg" => "保存网站logo失败ERR001"));
+                  }
+                  if(!file_exists($logoname)) {
+                      /* 文件不存在 */
+                      return new JsonModel (array("result" => false, "msg" => "保存网站logo失败ERR002"));
+                  }
+                  $logosize = $this->resizeImg($logoname, "logo.");
+                  $arr['logo'] = $savePath . "/s_"  . "logo." . $_FILES['logofile']['extension'];
+              }else{
+                  $arr["logo"] = !isset($commonArr['msg'][0]['web_logo']) || $commonArr['msg'][0]['web_logo'] == ""?"/logo.jpg":$commonArr['msg'][0]['web_logo'];
+              }
+          
+              /*将信息更新到网站基础设置表中*/
+              $this->getDbAdapter()->getDriver()->getConnection()->beginTransaction();
+              $ret = $webModel->saveWebSetting($arr);
+              if(!$ret['result']){
+                  $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                  return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR002"));
+              }
+              $this->getDbAdapter()->getDriver()->getConnection()->commit();
+              return new JsonModel(array('result'=>true,'msg'=>"保存成功"));
+          }else{
+              $response = $this->getResponse();
+              $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+              $response->setStatusCode(302);
+              return $response;//重定向到404页面
+          }
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }   
+   }
+
+   /**
+    *  获取轮播图片
+    * @return \Zend\View\Model\JsonModel|\Zend\Stdlib\ResponseInterface
+    */
+   public function getfrontpicAction(){
+       try {
+           
+           if($this->getRequest()->isPost()){
+               $user_session = new Container('user');
+               $userId = $user_session->userId;
+               if(!isset($userId)){
+                   return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+               }
+               $userModel = new User($this->getDbAdapter());
+               $picRet = $userModel->getFrontPic();
+               if(!$picRet){
+                   return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR001'));
+               }
+               return new JsonModel($picRet);
+           }else{
+               $response = $this->getResponse();
+               $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+               $response->setStatusCode(302);
+               return $response;//重定向到404页面
+           }
+           
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }  
+   }
+   
+   /**
+    * 增加前台图片
+    * @return \Zend\View\Model\JsonModel|\Zend\Stdlib\ResponseInterface
+    */
+   public function addfrontpicAction(){
+       try {
+           if($this->getRequest()->isPost()){
+               $user_session = new Container('user');
+               $userId = $user_session->userId;
+               if(!isset($userId)){
+                   return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+               }
+
+               /* 先判断是否为合法的图片类型 */
+               if ($_FILES['avatarfile']['size'] > 4194304) {
+                   return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+               }
+               $_FILES['avatarfile']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['avatarfile']['name'], '.')), '.'), 1);
+               if (in_array($_FILES['avatarfile']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                   $info = getimagesize($_FILES['avatarfile']['tmp_name']);
+                   if (false === $info || ('gif' == strtolower($_FILES['avatarfile']['extension']) && empty($info['bits']))) {
+                       return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                   }
+               }else{
+                   return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+               }
+               
+               /*保存头像的路径*/
+               $ava_filenamePath =  '/data/homeResource/image';
+               /* 判断目录是否存在，不存在则创建 */
+               if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                   mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+               }
+               /* 文件名*/
+               $timestamp = explode(" ", microtime());
+               $timestamp = implode($timestamp);
+               $filename = $ava_filenamePath . "/" . $timestamp. '.' . $_FILES['avatarfile']['extension'];
+                
+               if(!move_uploaded_file($_FILES['avatarfile']['tmp_name'],$_SERVER['DOCUMENT_ROOT'].$filename)){
+                   /* 保存文件不成功 */
+                   return new JsonModel (array("result" => false, "msg" => "保存失败"));
+               }
+               if(!file_exists($_SERVER['DOCUMENT_ROOT'].$filename)) {
+                   /* 文件不存在 */
+                   return new JsonModel (array("result" => false, "msg" => "文件不存在"));
+               }
+               $arr = array('url'=>$filename,'name'=>$_FILES['avatarfile']['name']);
+               $userModel = new User($this->getDbAdapter());
+               $picRet = $userModel->addFrontPic($arr);
+               if(!$picRet){
+                   return new JsonModel(array('result'=>false,'msg'=>'操作失败,请刷新页面重试ERR001'));
+               }
+               return new JsonModel(array('result'=>true,'msg'=>"添加成功"));
+           }else{
+               $response = $this->getResponse();
+               $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+               $response->setStatusCode(302);
+               return $response;//重定向到404页面
+           }
+       
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       } 
+   }
+   
+   public function deleteFrontpicAction(){
+       try {
+          if ($this->getRequest()->isPost()){
+              $user_session = new Container('user');
+              $userId = $user_session->userId;
+              if(!isset($userId)){
+                  return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+              }
+              
+          }else{
+               $response = $this->getResponse();
+               $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+               $response->setStatusCode(302);
+               return $response;//重定向到404页面
+           }
+           
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       } 
+   }
+}

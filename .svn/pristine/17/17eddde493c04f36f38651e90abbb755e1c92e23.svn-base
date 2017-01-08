@@ -1,0 +1,64 @@
+/**
+ * register
+ */
+Vue.http.options.emulateJSON = true;
+new Vue({
+	el:"body",
+	data:{
+		username:"",
+		password:"",
+		registerInfo:{
+			email:"",
+			password:"",
+			passwordVerify:""
+		}
+	},
+	created:function(){
+		
+	},
+	methods:{
+		login:function(){
+			if(this.username == ""){
+				toastr.info("请输入用户名");
+				return;
+			}
+			if(this.password == ""){
+				toastr.info("请输入密码");
+				return;
+			}
+			this.$http.post("/index/login",{
+				username:this.username,
+				password:this.password
+			}).then(function(data){
+				if(data.body.result){
+					toastr.success(data.body.msg);
+					jQuery("#modal-form").modal('hide');
+					location.href = "/"
+				}else{
+					toastr.error(data.body.msg);
+				}
+			})
+		},
+		register:function(){
+			if(this.username == ""){
+				toastr.info("请输入用户名");
+				return;
+			}
+			if(this.password == ""){
+				toastr.info("请输入密码");
+				return;
+			}
+			this.$http.post("/index/login",{
+				username:this.username,
+				password:this.password
+			}).then(function(data){
+				if(data.body.result){
+					toastr.success(data.body.msg);
+					location.href = "/"
+				}else{
+					toastr.error(data.body.msg);
+				}
+			})
+		}
+	}
+})

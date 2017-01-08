@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html>
+<head lang="en">
+<meta charset="UTF-8">
+<title>404</title>
+
+<link href='/css/bootstrap.min.css' rel='stylesheet'>
+<link href='/css/common_css/css.css' rel='stylesheet'>
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href='/css/common_css/animate.min.css' rel='stylesheet'>
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script type='text/javascript'>
+      $(document).ready(function(){
+  		/* 判断当前页面是否在iframe中  */
+ 		 if(self != top){ 
+ 			 $("#back").hide();
+ 		 }
+      })
+	</script>
+</head>
+<body class="gray-bg">
+
+	<div class="middle-box text-center animated fadeInRight">
+		<h1>404</h1>
+		<h3 class="font-bold">无法打开这个链接！</h3>
+		<div class="error-desc">可能原因:内容已删除或访问的页面不存在！</div>
+		<div class="form-inline m-t" id="back">
+			<a href="/" class="btn btn-primary">返回首页</a>
+		</div>
+		<div class="form-inline m-t" id="back">
+			<a data-toggle="modal" data-target="#faq-modal"><i class="fa fa-hand-o-right"></i>网站FAQ</a>
+		</div>
+	</div>
+
+	<div class="modal fade" id="faq-modal" tabindex="-1" role="dialog"
+		aria-labelledby="faq-modal-Label">
+		<div class="modal-dialog modal-lg">
+			<div class="modal-content">
+				<div class="modal-header">
+				    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+					<h4>常见问题解答:</h4>
+				</div>
+
+				<div class="modal-body" style="height: 460px; overflow: auto">
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<a href="#faq-4-1" data-parent="#faq-list-1"
+								data-toggle="collapse" class="accordion-toggle collapsed"> <i
+								class="icon-plus smaller-80" data-icon-hide="icon-minus"
+								data-icon-show="icon-plus"></i> &nbsp; 如何注册成为网站用户及登录网站？
+							</a>
+						</div>
+
+						<div class="panel-collapse collapse" id="faq-4-1">
+							<div class="panel-body">
+								<p>您可以按以下步骤注册成为批发会员.</p>
+								<p>1.点击首页 注册</p>
+								<p>2.按要求填写相应内容，提交成功即可用账号登陆网站</p>
+								<p>3.如果忘记密码,可以点击 登录 界面下方的找回密码</p>
+							</div>
+						</div>
+					</div>
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<a href="#faq-4-2" data-parent="#faq-list-2"
+								data-toggle="collapse" class="accordion-toggle collapsed"> <i
+								class="icon-plus smaller-80" data-icon-hide="icon-minus"
+								data-icon-show="icon-plus"></i> &nbsp; 为什么网页显示404？
+							</a>
+						</div>
+
+						<div class="panel-collapse collapse" id="faq-4-2">
+							<div class="panel-body">
+								<p>可能原因.</p>
+								<p>1.您查看的文章内容已经被网站管理人员删除</p>
+								<p>2.本身页面不存在</p>
+								<p>3.操作失误,请再次刷新页面重试</p>
+							</div>
+						</div>
+					</div>
+					
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<a href="#faq-4-3" data-parent="#faq-list-3"
+								data-toggle="collapse" class="accordion-toggle collapsed"> <i
+								class="icon-plus smaller-80" data-icon-hide="icon-minus"
+								data-icon-show="icon-plus"></i> &nbsp; 本系统有没有相应的手机App？
+							</a>
+						</div>
+
+						<div class="panel-collapse collapse" id="faq-4-3">
+							<div class="panel-body">
+								<p>网站配套有想应的iOS和Android APP,可以前往AppStore和各大应用商店下载,或者扫描二维码下载</p>
+								<img alt="image" class="img-circle"  src='/data/avatarResource/common/default.jpg'/>
+							</div>
+						</div>
+					</div>
+					
+					<div class="panel panel-default">
+						<div class="panel-heading">
+							<a href="#faq-4-4" data-parent="#faq-list-4"
+								data-toggle="collapse" class="accordion-toggle collapsed"> <i
+								class="icon-plus smaller-80" data-icon-hide="icon-minus"
+								data-icon-show="icon-plus"></i> &nbsp; 如何注册成为网站用户及登录网站？
+							</a>
+						</div>
+
+						<div class="panel-collapse collapse" id="faq-4-4">
+							<div class="panel-body">
+								<p>您可以按以下步骤注册成为批发会员.</p>
+								<p>1.点击首页 注册</p>
+								<p>2.按要求填写相应内容，提交成功即可用账号登陆网站</p>
+								<p>3.如果忘记密码,可以点击 登录 界面下方的找回密码</p>
+							</div>
+						</div>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<div class="pull-left"><span>没有找到你想要的问题点击<a data-toggle="modal" data-target="#online-modal">在线提问</a></span></div>
+					<button type="button" class="btn btn-info" data-dismiss="modal">关闭</button>
+				</div>
+			</div>
+		</div>
+	</div>
+	
+	<div class="modal fade" id="online-modal" tabindex="-1" role="dialog" aria-labelledby="online-modal-Label">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">在线提问</h4>
+                </div>
+                <div class="modal-body">
+                    <div  class="form-horizontal">
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">问题</label>
+                            <div class="col-sm-9">
+                                <input type="text" class="form-control"  placeholder="请输入您要询问的问题"/>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button type="button" class="btn btn-primary editBtn">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

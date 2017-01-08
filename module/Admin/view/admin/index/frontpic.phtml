@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>轮播</title>
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+<meta charset="UTF-8">
+<meta name="renderer" content="webkit">
+    <!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+    <!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/list.css" rel="stylesheet">
+<link href="/css/ui.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<link href="/css/common_css/sweetalert.css" rel="stylesheet">
+<script> 
+/* 判断当前页面是否在iframe中  */
+if(self==top){ 
+	window.location="/admin";
+ }
+</script>
+<style>
+span .img-circle{width: 64px;height: 64px;}
+/* 页面闪烁 */
+[v-cloak]{display:none;}
+</style>
+</head>
+<body class="fixed-sidebar full-height-layout gray-bg" v-cloak>
+<div class="wrapper wrapper-content animated fadeInRight">
+    <div class="row">
+       <div class="ibox ">
+            <div class="col-sm-8 col-sm-offset-2 m-b-xs">
+            	<button type="button" class="btn btn-sm btn-primary" @click="getfrontPic"> <i class="fa fa-refresh fa-spin"></i> 刷新</button>&nbsp;
+            	<button type="button" class="btn btn-sm  btn-primary" data-toggle="modal" href="#modal-form"><i class="fa fa-plus"></i> 新增 图片</button>
+            </div>
+       		<div class="col-sm-8 col-sm-offset-2 ibox-content text-center">
+       			<div class="media-frame wp-core-ui mode-grid">
+                	<div class="media-frame-content" v-if="totalrow > 0">
+                		    <ul class="attachments">
+                		    	<li class="attachment" v-for="resRes in resResList">
+                		    		<div class="attachment-preview">
+                		    			<div class="thumb"  @click="lookPic(resRes)">
+                		    				<div class="centered">
+                                                    <img :src="resRes.p_url">
+                		    				</div>
+                		    			</div>
+                		    		</div>
+                		    		<a href="#" class="name">
+                							<span v-text="resRes.p_name"></span>
+                					</a>
+                					<div class="image-options">
+                						<a data-action="trash" @click="deleteFrontpic(resRes)"><i class="fa fa-trash text-danger"></i></a>
+                					</div>
+                		    	</li>
+                    		</ul>
+                    </div>
+                    <div v-if="totalrow == 0">
+                    	<h1>未找到图片文件</h1>
+                    </div>
+                </div>
+       		</div>
+       </div>
+    </div>
+</div>
+</body>
+
+    <div id="modal-form" class="modal fade" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-body">
+				 <form class="form-horizontal myform" @submit.prevent="addfrontpic" role="form" id="addpicFrom">
+                        <div class="form-group">
+                            <div class="col-sm-10 col-sm-offset-2">
+                                <ul class="icon-image">
+									<li data-toggle="tooltip" data-placement="bottom" title="图片大小不超过4M">
+										<a>
+											<img class="avatar" src='/data/webResource/upload.png' onerror="javascript:this.src='/data/webResource/upload.png'">
+										</a>
+										<div class="tools tools-bottom">
+											<a>
+												<i class="fa fa-pencil"><input class="wsfile avatarfile" type="file" name="avatarfile" id="avatar"></i>
+											</a>
+										</div>
+									</li>
+								</ul>
+                            </div>
+                        </div>
+                        <div class="hr-line-dashed"></div>
+                        <div class="form-group">
+                            <div class="col-sm-8 col-sm-offset-2" style="text-align: center">
+                                <button class="btn btn-primary submit" type="submit">提交</button>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+<div class="modal fade" id="gallery-image-modal">
+	<div class="modal-dialog modal-sm">
+		<div class="modal-content previewPic">
+			<div class="modal-gallery-image">
+				<img class="img-responsive" />
+			</div>
+			<div class="modal-footer modal-gallery-top-controls">
+				<button type="button" class="btn btn-xs btn-white picCloseBtn" data-dismiss="modal">关闭</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<script src="/js/common_js/sweetalert.min.js"></script>
+<script src="/js/view_js/frontpic.js"></script>
+</html>

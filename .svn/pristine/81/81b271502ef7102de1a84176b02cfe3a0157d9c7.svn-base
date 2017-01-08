@@ -1,0 +1,143 @@
+<?php
+namespace Admin\Model;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseTableModel;
+use Zend\View\Model\JsonModel;
+
+class User extends BaseTableModel
+{
+    /**
+     * 初始化
+     * @param Adapter
+      $adapter
+     */
+    public function __construct(Adapter $adapter){
+        $this->adapter = $adapter;
+    }
+    
+    /**
+     * 根据用户名获取
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectUser($username){
+        $sql = "select * from user where username = :username limit 1";
+        return $this->sqlexec($sql,array("username"=>$username));
+    }
+    /**
+     * 根据用户ID获取
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectUserById($userid){
+        $sql = "select * from user where u_id = :id limit 1";
+        return $this->sqlexec($sql,array("id"=>$userid));
+    }
+    /**
+     * 注册用户
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function registerUser($username,$password){
+        $sql = "insert into user(username,password) values(:username,:password)";
+        return $this->sqlexec($sql,array("username"=>$username,"password"=>$password));
+    }
+    /**
+     * 获取权限
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectAuthority($username){
+        $sql = "select flag from user where u_id = :username limit 1";
+        return $this->sqlexec($sql,array("username"=>$username));
+    }
+    /**
+     * 获取课程列表
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectCourse($username){
+        if($username=='all'){
+            $sql = "select m.* from course_name m left join select_course n on m.c_id = n.c_id group by m.c_id";
+            return $this->sqlexec($sql);
+        }
+        else{
+            $sql = "select m.* from course_name m left join select_course n on m.c_id = n.c_id where n.u_id = :username";
+            return $this->sqlexec($sql,array("username"=>$username));
+        }
+        
+    }
+    
+    /**
+     * 创建课程
+     */
+    public function saveCouInfo($arr){
+        $sql = "insert into course_name(course,depict,schooltime,type) values(:title,:keycontent,:time,:type)";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 更新课程
+     */
+    public function updateCouInfo($arr){
+        $sql = "update course_name set course=:title,depict=:keycontent,schooltime = :time,type=:type,photo =:photo where c_id = :id";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 查询课程分类  分级
+     * @param unknown $parid
+     */
+    public function selectCourseCl($parid){
+        if($parid == ""){
+            $sql = "select * from course_classify where par_id is null";
+        }else{
+            $sql = "select * from course_classify where par_id = $parid";
+        }
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 查询课程分类 不分级
+     */
+    public function selectAllCourseCl(){
+        $sql = "select * from course_classify";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 查询是否有同名课程分类
+     */
+    public function checkClexist($name){
+        $sql = "select * from course_classify where cl_name = '$name' limit 1 ";
+        return $this->sqlexec($sql); 
+    }
+    
+    /**
+     * 增加课程分类
+     */
+    public function addCl($name){
+        $sql = "insert into course_classify(cl_name) value('$name')";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 保存课程分类列表
+     */
+    public function saveClList($arrinfo){
+        $sql = "update course_classify set par_id = :parent where cl_id = :children";
+        return $this->sqlexec($sql,$arrinfo);
+    }
+    
+    /**
+     * 更新头像
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function addUserHeadPic($arr){
+        $sql = "update user set headpic = :ava_filename where u_id in (:userId)";
+        return $this->sqlexec($sql,$arr);
+    }
+        
+}

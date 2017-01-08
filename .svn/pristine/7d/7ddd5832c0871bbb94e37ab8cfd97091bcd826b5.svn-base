@@ -1,0 +1,530 @@
+<?php
+namespace Admin\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use Admin\Model\NxCloud;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Model\Base\nxException;
+use Admin\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class UsermgrController extends BaseController
+{
+    public function indexAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    /**
+     * 获取用户基本信息
+     */
+    public function getUserAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if( !isset($userId) ){
+                    return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+                }
+                /*根据用户ID 获取用户的基本信息*/
+                $user = new User($this->getDbAdapter());
+                $userRet = $user->selectUserById($userId);
+                if(!$userRet['result'] || count($userRet['msg']) == 0){
+                    return new JsonModel(array("result"=>false,'msg'=>"获取数据失败,可能原因:用户不存在"));
+                }
+                $userRet['role'] = $userRet["msg"][0]['flag'];
+                $userRet['rolename'] = $userRet["msg"][0]['flag'] == 1 ?"管理员":"普通用户";
+                $userRet["msg"][0]['headpic'] = isset($userRet["msg"][0]['headpic'])?$userRet["msg"][0]['headpic']:"/data/avatarResource/common/default.jpg";
+                $userRet["msg"][0]['nickname'] = substr($userRet["msg"][0]['username'], 0, strpos($userRet["msg"][0]['username'], '@'));
+                $userRet["msg"][0]['emailname'] = $userRet["msg"][0]['username'];
+                return new JsonModel($userRet);
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 修改头像
+     * @return \Zend\View\Model\JsonModel|\Zend\View\Model\ViewModel
+     */
+    public function editAvatarAction(){
+        try {
+        
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId)){
+                return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+            }
+            if($this->getRequest()->isPost()){
+                /* 先判断是否为合法的图片类型 */
+                if ($_FILES['avatar_file']['size'] > 4194304) {
+                    return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+                }
+                $_FILES['avatar_file']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['avatar_file']['name'], '.')), '.'), 1);
+                if (in_array($_FILES['avatar_file']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                    $info = getimagesize($_FILES['avatar_file']['tmp_name']);
+                    if (false === $info || ('gif' == strtolower($_FILES['avatar_file']['extension']) && empty($info['bits']))) {
+                        return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                    }
+                }else{
+                    return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+                }
+        
+                /*保存头像的路径*/
+                $ava_filenamePath =  '/data/avatarResource/image';
+                /* 判断目录是否存在，不存在则创建 */
+                if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                    mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+                }
+                /* 文件名，由MD5用户ID生成 */
+                $filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/" . md5($userId) . '.' . $_FILES['avatar_file']['extension'];
+                 
+                if(!move_uploaded_file($_FILES['avatar_file']['tmp_name'], $filename)){
+                    /* 保存文件不成功 */
+                    return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                }
+                if(!file_exists($filename)) {
+                    /* 文件不存在 */
+                    return new JsonModel (array("result" => false, "msg" => "头像文件不存在"));
+                }
+                /*提取截取的图片信息*/
+                $avatar_data = json_decode($_POST['avatar_data'],true);
+                $x = (int)$avatar_data['x'];
+                $y = (int)$avatar_data['y'];
+                $width = (int)$avatar_data['width'];
+                $height = (int)$avatar_data['height'];
+                /*获取图片的宽、高和类型*/
+                list($src_width,$src_height,$src_type) = getimagesize($filename);
+                 
+                /*根据图片类型保存图片到文件夹并创建头像路径*/
+                if($src_type==2){
+                    $source=imagecreatefromjpeg($filename);
+                }
+                if($src_type==3){
+                    $source=imagecreatefrompng($filename);
+                }
+                $ava_filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension'];
+                /*截取图片*/
+                $new_image = imagecreatetruecolor($width, $height);
+                imagecopy($new_image, $source, 0, 0, $x, $y, $width, $height);
+                /*根据图片类型保存头像到文件夹*/
+                if($src_type==2){
+                    $flag = imagejpeg($new_image,$ava_filename);
+                }
+                if($src_type==3){
+                    $flag = imagepng($new_image,$ava_filename);
+                }
+                if(!$flag){
+                    return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR001"));
+                }
+                /*将头像地址更新到user表中*/
+        
+                $arr = array(
+                    "userId" => $userId,
+                    "ava_filename"=> $ava_filenamePath . "/s_"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension']
+                );
+                 
+                /*压缩资源*/
+                $resPath = $_SERVER['DOCUMENT_ROOT'] .$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension'];
+                $size = $this->resizeImg($resPath, md5($userId) . '_avatar.');
+                $User = new User($this->getDbAdapter());
+                $ret = $User->addUserHeadPic($arr);
+                if(!$ret['result']){
+                    return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR002"));
+                }
+                /*释放内存资源*/
+                imagedestroy($source);
+                imagedestroy($new_image);
+        
+                return new JsonModel(array('result'=>true,'msg'=>"上传头像成功",'url'=>$arr['ava_filename']));
+            }else{
+                return  new ViewModel();
+            }
+        }catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+    public function editUserInfoAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if( !isset($userId) ){
+                    return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+                }
+                $username=$_POST['nickname'];
+                $number=$_POST['number'];
+                $createtime=$_POST['birthday'];
+                if (!$this->checkMain("email", $username)) {
+                    return new JsonModel(array('result'=>false,"msg"=>"用户名格式不正确"));
+                }
+                $user = new User($this->getDbAdapter());
+                $checkRet = $user->selectUser($username);
+                if(!$checkRet['result']){
+                    return new JsonModel(array('result' => false,'msg' => '异常:请刷新页面重试ERR001'));
+                }
+                if(1 == count($checkRet['msg'])){
+                    return new JsonModel(array('result' => false,'msg' => '用户名已存在'));
+                }
+                $userRet = $user->editUserInfo($userId,$username,$number,$createtime);
+             //  var_dump($userRet);
+                if($userRet['result']){
+                    return new JsonModel(array('result'=>'true','msg'=>'更新成功'));
+                }
+                else{
+                    return new JsonModel(array('result'=>'false','msg'=>'更新失败，请重新操作'));
+                }
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+    public function  editAboutUserAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if( !isset($userId) ){
+                    return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+                }
+                $school=$_POST['school'];
+                $college=$_POST['college'];
+                $classes=$_POST['classes'];
+                $hobby=$_POST['hobby'];
+                $user = new User($this->getDbAdapter());
+                $userRet = $user->editAboutUser($userId,$school,$college,$classes,$hobby);
+              //  var_dump($userRet);exit;
+                if($userRet['result']){
+                    return new JsonModel(array('result'=>'true','msg'=>'更新成功'));
+                }
+                else{
+                    return new JsonModel(array('result'=>'false','msg'=>'更新失败，请重新操作'));
+                }
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 用户列表
+     * @return \Zend\View\Model\ViewModel|\Zend\View\Model\JsonModel
+     */
+    public function userlistAction(){
+        try {
+            return new ViewModel();
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+    
+    /**
+     * 获取用户列表
+     * @return \Zend\View\Model\JsonModel|\Zend\Stdlib\ResponseInterface
+     */
+    public function getAllUserAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId)){
+                    return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+                }
+                $userModel = new User($this->getDbAdapter());
+                $userRet = $userModel->getAllUser();
+                if(!$userRet['result']){
+                    return new JsonModel(array('result'=>false,'msg'=>"操作失败,请刷新页面重试ERR001"));
+                }
+                foreach ($userRet['msg'] as $key=>$val){
+                    $userRet['msg'][$key]['check'] = false;
+                }
+                return new JsonModel($userRet);
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+   /**
+    * 增加用户
+    * @return \Zend\View\Model\JsonModel|\Zend\Stdlib\ResponseInterface
+    */
+    public function addUserAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if(!isset($userId)){
+                    return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+                }
+                
+                /* 是否点选上传了头像 */
+                if(!empty($_FILES['avatarfile']['tmp_name'])){
+                    /* 先判断是否为合法的图片类型 */
+                    if ($_FILES['avatarfile']['size'] > 4194304) {
+                        return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+                    }
+                    $_FILES['avatarfile']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['avatarfile']['name'], '.')), '.'), 1);
+                    if (in_array($_FILES['avatarfile']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                        $info = getimagesize($_FILES['avatarfile']['tmp_name']);
+                        if (false === $info || ('gif' == strtolower($_FILES['avatarfile']['extension']) && empty($info['bits']))) {
+                            return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                        }
+                    }else{
+                        return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+                    }
+                }
+                $email = trim($this->getRequest()->getPost('email'));
+                $password = trim($this->getRequest()->getPost('password'));
+                $confirm_password = trim($this->getRequest()->getPost('passwordVerify'));
+                $roleid = $this->getRequest()->getPost('type');
+                
+                $userModel = new User($this->getDbAdapter());
+                $userRet = $userModel->selectUser($email);
+                if(!$userRet['result']){
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试ERR001"));
+                }
+                if(0 != count($userRet['msg'])){
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败,该邮箱已被注册"));
+                }
+                $bcrypt = new Bcrypt();
+                $userRet = $userModel->registerUser($email,$bcrypt->create($password),$roleid);
+                if(!$userRet['result']){
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试ERR002"));
+                }
+                if(!empty($_FILES['avatarfile']['tmp_name'])){
+                    /*获取新建用户的ID*/
+                    $userId = $userRet['msg'];
+                    /*保存头像的路径*/
+                    $ava_filenamePath =  '/data/avatarResource/image';
+                    /* 判断目录是否存在，不存在则创建 */
+                    if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                        mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+                    }
+                    /* 文件名，由MD5用户ID生成 */
+                    $filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/" . md5($userId) . '.' . $_FILES['avatarfile']['extension'];
+                    $resPath = $_SERVER['DOCUMENT_ROOT'] .$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatarfile']['extension'];
+                
+                    if(!move_uploaded_file($_FILES['avatarfile']['tmp_name'], $filename)){
+                        /* 保存文件不成功 */
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                    }
+                    if(!copy($filename, $resPath)){
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                    }
+                    if(!file_exists($filename) || !file_exists($resPath) ) {
+                        /* 文件不存在 */
+                        $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                        return new JsonModel (array("result" => false, "msg" => "头像文件不存在"));
+                    }
+                     
+                    /*压缩资源*/
+                    $size = $this->resizeImg($resPath, md5($userId) . '_avatar.');
+                    $headpic = $ava_filenamePath . "/s_"  . md5($userId) . '_avatar.' . $_FILES['avatarfile']['extension'];
+                }else{
+                    /*默认头像*/
+                    $headpic = "/data/avatarResource/common/default.jpg";
+                }
+                $userRet = $userModel->addUserHeadPic(array('userId'=>$userRet['msg'],'ava_filename'=>$headpic));
+                if(!$userRet['result']){
+                    return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试ERR003"));
+                }
+                
+                
+                return new JsonModel(array("result"=>true,'msg'=>"添加成功"));
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+        }
+    }
+    /**
+     * 删除用户
+     */
+    public function deleteUserinfoAction(){
+        try {
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            $user = new User($this->getDbAdapter());
+            $userRet = $user->selectUserById($userId);
+         if($userRet['result']){
+               if(count($userRet['msg']) == 0){
+                   return new JsonModel(array('result'=>false,'msg'=>" 用户不存在"));
+               }
+               $userAuthority = $user->selectAuthority($userId);
+               if($userAuthority['result']){
+               if($userAuthority['msg'][0]['flag']== 0){
+                   return new JsonModel(array('result'=>false,'msg'=>"普通用户不能删除用户"));
+               }
+               else{
+                   $u_id=$_POST['cou_u_id'];
+                   if($u_id==$userId){
+                       return new JsonModel(array('result'=>false,'msg'=>"不能删除操作用户"));
+                   }
+                   $userRet = $user->deleteUserInfo($u_id);
+                   if($userRet['result']){
+                       return new JsonModel(array('result'=>true,'msg'=>"删除操作成功"));
+                   }
+                   else{
+                       return new JsonModel(array("result" => false, "msg" =>"获取数据操作失败，请刷新页面重试"));
+                   }
+                   
+               }
+               }
+               }
+               else{
+                   return new JsonModel(array("result" => false, "msg" =>"获取数据操作失败，请刷新页面重试"));
+               }
+       } catch (\Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       }
+    }
+    public function updateUserinfoAction(){
+       try {
+           
+           $user_session = new Container('user');
+           $userId = $user_session->userId;
+           $user = new User($this->getDbAdapter());
+           $userRet = $user->selectUserById($userId);
+           if($userRet['result']){
+               if(count($userRet['msg']) == 0){
+                   return new JsonModel(array('result'=>false,'msg'=>" 用户不存在"));
+               }
+               $request = $this->getRequest();
+               $edit_email= $request->getPost('edit_email');
+               $edit_oldpassword = $request->getPost('edit_oldpassword');
+               $edit_password = $request->getPost('edit_password');
+               $edit_passwordVerify = $request->getPost('edit_passwordVerify');
+               $id = $request->getPost('id');
+               $userAuthority = $user->selectAuthority($userId);
+               if($userAuthority['result']){
+                   if($userAuthority['msg'][0]['flag']== 0){
+                       if($id==$userId){
+                           
+                       }else{
+                       return new JsonModel(array('result'=>false,'msg'=>"普通用户不能编辑其他用户"));
+                             }
+                   }
+                   else{
+                       if(!empty($_FILES['edit_avatarfile']['tmp_name'])){
+                           /* 先判断是否为合法的图片类型 */
+                           if ($_FILES['edit_avatarfile']['size'] > 4194304) {
+                               return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+                           }
+                           $_FILES['edit_avatarfile']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['edit_avatarfile']['name'], '.')), '.'), 1);
+                           if (in_array($_FILES['edit_avatarfile']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                               $info = getimagesize($_FILES['edit_avatarfile']['tmp_name']);
+                               if (false === $info || ('gif' == strtolower($_FILES['edit_avatarfile']['extension']) && empty($info['bits']))) {
+                                   return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                               }
+                           }else{
+                               return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+                           }
+                       }
+                       if (!$this->checkMain('password',$edit_password)){
+                           return new JsonModel(array('result' => false,'msg' => '异常:密码需要大小写字母跟数字组成并且长度在6-16字符'));
+                       }
+                       if (!$this->checkMain('password',$edit_passwordVerify)){
+                           return new JsonModel(array('result' => false,'msg' => '异常:密码需要大小写字母跟数字组成并且长度在6-16字符'));
+                       }
+                       if($edit_password!=$edit_passwordVerify){
+                           return new JsonModel(array('result' => false,'msg' => '异常:两次输入的新密码不一致'));
+                       }
+                       $bcrypt = new Bcrypt();
+                       $ret=$bcrypt->verify($edit_oldpassword, $userRet['msg'][0]['password']);
+                       if($ret){
+                     $pw=$bcrypt->create($edit_passwordVerify);
+                     $editRet=$user->updatePassword($id,$pw);
+                     if(!$editRet['result']){
+                         return new JsonModel(array("result"=>false,'msg'=>"更改密码错误,请刷新页面重试"));
+                     }
+                     if(!empty($_FILES['edit_avatarfile']['tmp_name'])){
+                         /*获取新建用户的ID*/
+                         $userId = $id;
+                         /*保存头像的路径*/
+                         $ava_filenamePath =  '/data/avatarResource/image';
+                         /* 判断目录是否存在，不存在则创建 */
+                         if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                             mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+                         }
+                         /* 文件名，由MD5用户ID生成 */
+                         $filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/" . md5($userId) . '.' . $_FILES['edit_avatarfile']['extension'];
+                         $resPath = $_SERVER['DOCUMENT_ROOT'] .$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['edit_avatarfile']['extension'];
+                     
+                         if(!move_uploaded_file($_FILES['edit_avatarfile']['tmp_name'], $filename)){
+                             /* 保存文件不成功 */
+                             $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                             return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                         }
+                         if(!copy($filename, $resPath)){
+                             $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                             return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                         }
+                         if(!file_exists($filename) || !file_exists($resPath) ) {
+                             /* 文件不存在 */
+                             $this->getDbAdapter()->getDriver()->getConnection()->rollback();
+                             return new JsonModel (array("result" => false, "msg" => "头像文件不存在"));
+                         }
+                          
+                         /*压缩资源*/
+                         $size = $this->resizeImg($resPath, md5($userId) . '_avatar.');
+                         $headpic = $ava_filenamePath . "/s_"  . md5($userId) . '_avatar.' . $_FILES['edit_avatarfile']['extension'];
+                     }else{
+                         /*默认头像*/
+                         $headpic = "/data/avatarResource/common/default.jpg";
+                     }
+                     $userRet = $user->addUserHeadPic(array('userId'=>$id,'ava_filename'=>$headpic));
+                     if(!$userRet['result']){
+                         return new JsonModel(array("result"=>false,'msg'=>"操作失败,请刷新页面重试"));
+                     }
+                     return new JsonModel(array("result"=>true,'msg'=>"修改成功"));
+                     } else{
+                           return new JsonModel(array('result'=>true,"msg"=>"旧密码错误"));
+                       }
+                           
+                       }
+                      
+             
+                   }
+               }
+           else{
+               return new JsonModel(array("result" => false, "msg" =>"获取数据操作失败，请刷新页面重试"));
+           }
+            
+       } catch (Exception $e) {
+           return new JsonModel (array("result" => false, "msg" =>"操作失败，请刷新页面重试"));
+       } 
+    }
+}

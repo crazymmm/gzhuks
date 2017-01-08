@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=Edge,chrome=1" />
+<script> 
+/* 判断当前页面是否在iframe中  */
+if(self==top){window.location="/admin";}
+</script>
+<title>网站设置</title>
+<meta name="keywords" content="">
+<meta name="description" content="">
+
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/ui.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<style>
+/* 页面闪烁 */
+[v-cloak]{display:none;}
+</style>
+</head>
+<body class="gray-bg" v-cloak>
+    <div class="wrapper wrapper-content animated fadeInRight">
+        <div class="row">
+            <div class="col-sm-10 col-sm-offset-1">
+                <div class="ibox float-e-margins">
+                    <div class="ibox-title">
+                        <h5>网站设置</h5>
+                        <div class="ibox-tools">
+                            <a > <i class="fa fa-refresh fa-spin"></i></a>
+                        </div>
+                    </div>
+                    <div class="ibox-content">
+                        <form  class="form-horizontal myform" @submit.prevent="onSubmit" role="form">
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">站点标题</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="webtitle" value="<?php echo $this->common['web_title']?>" data-toggle="tooltip" data-placement="bottom" title="网站标题15字符以内">
+                                </div>
+                            </div>
+                            <div class="hr-line-dashed"></div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">网站LOGO</label>
+                                <div class="col-sm-10">
+                                    <ul class="icon-image">
+										<li data-toggle="tooltip" data-placement="bottom" title="图片大小不超过4M">
+											<a>
+												<img class="logo" src="<?php echo $this->common['web_logo'].'?'.date("h:i:s")?>" onerror="javascript:this.src='/data/webResource/upload.png'">
+											</a>
+											<div class="tools tools-bottom">
+												<a>
+													<i class="fa fa-pencil"><input class="wsfile logofile" type="file" name="logofile" id="logo"></i>
+												</a>
+											</div>
+										</li>
+									</ul>
+                                </div>
+                            </div>
+                            <div class="hr-line-dashed"></div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">网站关键字</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="webkeyword" value="<?php echo $this->common['web_keyword']?>" data-toggle="tooltip" data-placement="bottom" title="关键字之间用，隔开,不超过100字">
+                                </div>
+                            </div>
+                            <div class="hr-line-dashed"></div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">网站描述</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="webkeycontent" value="<?php echo $this->common['web_keycontent']?>" data-toggle="tooltip" data-placement="bottom" title="请用最多100个字符描述您的站点">
+                                </div>
+                            </div>
+                            <div class="hr-line-dashed"></div>
+                            <div class="form-group">
+                                <label class="col-sm-2 control-label">ICP备案号</label>
+                                <div class="col-sm-10">
+                                    <input type="text" class="form-control" name="webicpnum" value="<?php echo $this->common['web_num']?>">
+                                </div>
+                            </div>
+                            <div class="hr-line-dashed"></div>
+                            <div class="form-group">
+                                <div class="col-sm-4 col-sm-offset-2">
+                                    <button class="btn btn-primary submit" type="submit">保存配置</button>
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<!-- 自定义js -->
+<script src="/js/view_js/setting.js"></script> 
+</body>
+</html>

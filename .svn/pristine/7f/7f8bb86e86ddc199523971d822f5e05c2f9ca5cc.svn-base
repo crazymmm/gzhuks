@@ -1,0 +1,267 @@
+<?php
+namespace Admin\Model;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseTableModel;
+use Zend\View\Model\JsonModel;
+
+class User extends BaseTableModel
+{
+    /**
+     * 初始化
+     * @param Adapter
+      $adapter
+     */
+    public function __construct(Adapter $adapter){
+        $this->adapter = $adapter;
+    }
+    
+    public function getWebSetting(){
+        $sql = "select * from web_setting";
+        return $this->sqlexec($sql);
+    }
+    
+    public function saveWebSetting($arr){
+        $_ret = $this->getWebSetting();
+        if(!$_ret['result']){
+            return $_ret;
+        }
+        if(0 != count($_ret['msg'])){
+            $sql = "update web_setting set web_logo = :logo,web_title = :title,web_keyword = :keyword,web_keycontent=:keycontent,web_num=:icpnum";
+        }else{
+            $sql = "insert into web_setting(web_logo,web_title,web_keyword,web_keycontent,web_num) values(:logo,:title,:keyword,:keycontent,:icpnum)";
+        } 
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 根据用户名获取
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectUser($username){
+        $sql = "select * from user where username = :username limit 1";
+        return $this->sqlexec($sql,array("username"=>$username));
+    }
+    /**
+     * 根据用户ID获取
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectUserById($userid){
+        $sql = "select * from user where u_id = :id limit 1";
+        return $this->sqlexec($sql,array("id"=>$userid));
+    }
+    /**
+     * 注册用户
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function registerUser($username,$password,$type=0){
+        $sql = "insert into user(username,password,flag) values(:username,:password,:flag)";
+        return $this->sqlexec($sql,array("username"=>$username,"password"=>$password,'flag'=>$type));
+    }
+    /**
+     * 获取权限
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectAuthority($username){
+        $sql = "select flag from user where u_id = :username limit 1";
+        return $this->sqlexec($sql,array("username"=>$username));
+    }
+    /**
+     * 获取课程列表
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function selectCourse($username){
+        if($username=='all'){
+            $sql = "select * from
+(select t.*,f.s_id,f.u_id,f.createtime from (select m.*,n.username from course_name m left join user n on m.c_user=n.u_id)t left join select_course f on t.c_id = f.c_id group by t.c_id)g
+left join course_classify y on g.type=y.cl_id";
+            return $this->sqlexec($sql);
+        }
+        else{
+            $sql = "select * from
+(select t.*,f.s_id,f.u_id,f.createtime from (select m.*,n.username from course_name m left join user n on m.c_user=n.u_id) t left join select_course f on t.c_id = f.c_id where f.u_id = :username)g
+left join course_classify y on g.type=y.cl_id;";
+            return $this->sqlexec($sql,array("username"=>$username));
+        }
+        
+    }
+    
+    /**
+     * 创建课程
+     */
+    public function saveCouInfo($arr){
+        $sql = "insert into course_name(c_user,course,depict,schooltime,type) values(:username,:title,:keycontent,:time,:type)";
+        return $this->sqlexec($sql,$arr);
+    }
+    /**
+     * 删除课程
+     * @param unknown $c_id
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function deleteCouInfo($c_id){
+        $sql = "delete from course_name where c_id = :c_id";
+        return $this->sqlexec($sql,array("c_id"=>$c_id));
+    }
+    
+    /**
+     * 更新课程
+     */
+    public function updateCouInfo($arr){
+        $sql = "update course_name set c_user=:username,course=:title,depict=:keycontent,schooltime = :time,type=:type,photo =:photo where c_id = :id";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 查询课程分类  分级
+     * @param unknown $parid
+     */
+    public function selectCourseCl($parid){
+        if($parid == ""){
+            $sql = "select * from course_classify where par_id is null";
+        }else{
+            $sql = "select * from course_classify where par_id = $parid";
+        }
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 查询课程分类 不分级
+     */
+    public function selectAllCourseCl(){
+        $sql = "select * from course_classify";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 查询是否有同名课程分类
+     */
+    public function checkClexist($name){
+        $sql = "select * from course_classify where cl_name = '$name' limit 1 ";
+        return $this->sqlexec($sql); 
+    }
+    
+    /**
+     * 增加课程分类
+     */
+    public function addCl($name){
+        $sql = "insert into course_classify(cl_name) value('$name')";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 保存课程分类列表
+     */
+    public function saveClList($arrinfo){
+        $sql = "update course_classify set par_id = :parent where cl_id = :children";
+        return $this->sqlexec($sql,$arrinfo);
+    }
+    
+    /**
+     * 更新头像
+     * @param unknown $username
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function addUserHeadPic($arr){
+        $sql = "update user set headpic = :ava_filename where u_id in (:userId)";
+        return $this->sqlexec($sql,$arr);
+    }
+
+    /**
+     * 修改个人信息
+     * @param unknown $userId
+     * @param unknown $username
+     * @param unknown $number
+     * @param unknown $createtime
+     */
+    public function editUserInfo($userId,$username,$number,$createtime){
+        $sql = "update user set username=:username , number=:number , createtime=:createtime where u_id=:u_id";
+        return $this->sqlexec($sql,array("u_id"=>$userId,"username"=>$username,"number"=>$number,"createtime"=>$createtime));
+    }
+    /**
+     * 修改详细信息
+     * @param unknown $userId
+     * @param unknown $school
+     * @param unknown $college
+     * @param unknown $classes
+     * @param unknown $hobby
+     */
+    public function editAboutUser($userId,$school,$college,$classes,$hobby){
+        $sql = "update user set school=:school , college=:college , classes=:classes ,hobby=:hobby where u_id=:u_id";
+        return $this->sqlexec($sql,array("u_id"=>$userId,"school"=>$school,"college"=>$college,"classes"=>$classes,"hobby"=>$hobby));
+    }
+
+    /**
+     * 获取用户列表
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function getAllUser(){
+        $sql = "select u_id,username,flag,classes,number,college,school,headpic from user";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 获取前台轮播图片
+     */
+    public function getFrontPic(){
+        $sql = "select * from front_pic";
+        return $this->sqlexec($sql);
+    }
+    
+    /**
+     * 增加一条轮播图片
+     */
+    public function addFrontPic($arr){
+        $sql = "insert into front_pic(p_name,p_url) values(:name,:url)";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 删除一张轮播图片
+     * @param unknown $id
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function deleteFrontpic($id){
+        $sql = "delete from  front_pic where p_id = :id";
+        return $this->sqlexec($sql,array('id'=>$id));
+    }
+    /**
+     * 获取文章
+     */
+    public function getArticle(){
+        $sql = "select *,n.username  from  article m,user n where m.a_user = n.u_id";
+        return $this->sqlexec($sql);
+    }
+    /**
+     * 创建文章
+     * @param unknown $arr
+     */
+    public function createArticle($arr){
+        $sql = "insert into article(title,content,type,keyword,a_user) values(:title,:content,:type,:keyword,:user)";
+        return $this->sqlexec($sql,$arr);
+    }
+    
+    /**
+     * 删除文章
+     * @param unknown $id
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function deleteArticle($id){
+        $sql = "delete from article where art_id = :id";
+        return $this->sqlexec($sql,array('id'=>$id));
+    }
+    
+    /**
+     * 更新文章
+     * @param unknown $arr
+     * @return \Model\Base\如果是SELECT会返回数组，如果INSERT会返回插入完的生成的主键，update/delete返回TRUE/FALSE和MSG
+     */
+    public function editArticle($arr){
+        $sql = "update article set title = :title,content = :content,type = :type,keyword = :keyword where art_id = :id";
+        return $this->sqlexec($sql,$arr);
+    }
+}

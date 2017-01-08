@@ -1,0 +1,158 @@
+<?php
+namespace Admin\Controller;
+
+use Zend\Db\Adapter\Adapter;
+use Model\Base\BaseController;
+use Admin\Model\NxCloud;
+use Zend\View\Model\ViewModel;
+use Zend\View\Model\JsonModel;
+use Zend\Session\Container;
+use Model\Base\nxException;
+use Admin\Model\User;
+use Zend\Crypt\Password\Bcrypt;
+use phpDocumentor\Reflection\Types\This;
+
+class UsermgrController extends BaseController
+{
+    public function indexAction()
+    {
+        /* 实例化模型 */
+        $view = new ViewModel();
+        return $view;
+    }
+    
+    /**
+     * 获取用户基本信息
+     */
+    public function getUserAction(){
+        try {
+            if($this->getRequest()->isPost()){
+                $user_session = new Container('user');
+                $userId = $user_session->userId;
+                if( !isset($userId) ){
+                    return new JsonModel(array("result"=>false,'msg'=>"请先登录"));
+                }
+                /*根据用户ID 获取用户的基本信息*/
+                $user = new User($this->getDbAdapter());
+                $userRet = $user->selectUserById($userId);
+                if(!$userRet['result'] || count($userRet['msg']) == 0){
+                    return new JsonModel(array("result"=>false,'msg'=>"获取数据失败,可能原因:用户不存在"));
+                }
+                $userRet['role'] = "admin";
+                $userRet['rolename'] = "管理员";
+                $userRet["msg"][0]['headpic'] = "/data/avatarResource/common/default.jpg";
+                $userRet["msg"][0]['nickname'] = substr($userRet["msg"][0]['username'], 0, strpos($userRet["msg"][0]['username'], '@'));
+                return new JsonModel($userRet);
+            }else{
+                $response = $this->getResponse();
+                $response->getHeaders()->addHeaderLine('Location', "../../../../../html/common/404.html");
+                $response->setStatusCode(302);
+                return $response;//重定向到404页面
+            }
+        } catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+    
+    /**
+     * 修改头像
+     * @return \Zend\View\Model\JsonModel|\Zend\View\Model\ViewModel
+     */
+    public function editAvatarAction(){
+        try {
+        
+            $user_session = new Container('user');
+            $userId = $user_session->userId;
+            if(!isset($userId)){
+                return new JsonModel(array("result"=>true,'msg'=>"请先登录"));
+            }
+            if($this->getRequest()->isPost()){
+                /* 先判断是否为合法的图片类型 */
+                if ($_FILES['avatar_file']['size'] > 4194304) {
+                    return new JsonModel(array("result"=>false,'msg'=>"上传的头像文件体积超过了限制 最大不能超过4M"));
+                }
+                $_FILES['avatar_file']['extension'] = substr(strrchr(strtolower(strrchr($_FILES['avatar_file']['name'], '.')), '.'), 1);
+                if (in_array($_FILES['avatar_file']['extension'], array('gif', 'jpg', 'jpeg', 'bmp', 'png'))) {
+                    $info = getimagesize($_FILES['avatar_file']['tmp_name']);
+                    if (false === $info || ('gif' == strtolower($_FILES['avatar_file']['extension']) && empty($info['bits']))) {
+                        return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR001"));
+                    }
+                }else{
+                    return new JsonModel(array("result"=>false,'msg'=>"不支持的图像文件ERR002"));
+                }
+        
+                /*保存头像的路径*/
+                $ava_filenamePath =  '/data/avatarResource/image';
+                /* 判断目录是否存在，不存在则创建 */
+                if (! is_dir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath)) {
+                    mkdir($_SERVER['DOCUMENT_ROOT'] . $ava_filenamePath, 0755, true); // 第三个参数为true即可以创建多极目录
+                }
+                /* 文件名，由MD5用户ID生成 */
+                $filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/" . md5($userId) . '.' . $_FILES['avatar_file']['extension'];
+                 
+                if(!move_uploaded_file($_FILES['avatar_file']['tmp_name'], $filename)){
+                    /* 保存文件不成功 */
+                    return new JsonModel (array("result" => false, "msg" => "保存头像失败"));
+                }
+                if(!file_exists($filename)) {
+                    /* 文件不存在 */
+                    return new JsonModel (array("result" => false, "msg" => "头像文件不存在"));
+                }
+                /*提取截取的图片信息*/
+                $avatar_data = json_decode($_POST['avatar_data'],true);
+                $x = (int)$avatar_data['x'];
+                $y = (int)$avatar_data['y'];
+                $width = (int)$avatar_data['width'];
+                $height = (int)$avatar_data['height'];
+                /*获取图片的宽、高和类型*/
+                list($src_width,$src_height,$src_type) = getimagesize($filename);
+                 
+                /*根据图片类型保存图片到文件夹并创建头像路径*/
+                if($src_type==2){
+                    $source=imagecreatefromjpeg($filename);
+                }
+                if($src_type==3){
+                    $source=imagecreatefrompng($filename);
+                }
+                $ava_filename = $_SERVER['DOCUMENT_ROOT'].$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension'];
+                /*截取图片*/
+                $new_image = imagecreatetruecolor($width, $height);
+                imagecopy($new_image, $source, 0, 0, $x, $y, $width, $height);
+                /*根据图片类型保存头像到文件夹*/
+                if($src_type==2){
+                    $flag = imagejpeg($new_image,$ava_filename);
+                }
+                if($src_type==3){
+                    $flag = imagepng($new_image,$ava_filename);
+                }
+                if(!$flag){
+                    return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR001"));
+                }
+                /*将头像地址更新到user表中*/
+        
+                $arr = array(
+                    "userId" => $userId,
+                    "ava_filename"=> $ava_filenamePath . "/s_"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension']
+                );
+                 
+                /*压缩资源*/
+                $resPath = $_SERVER['DOCUMENT_ROOT'] .$ava_filenamePath . "/"  . md5($userId) . '_avatar.' . $_FILES['avatar_file']['extension'];
+                $size = $this->resizeImg($resPath, md5($userId) . '_avatar.');
+                $User = new User($this->getDbAdapter());
+                $ret = $User->addUserHeadPic($arr);
+                if(!$ret['result']){
+                    return new JsonModel(array("result" => false,"msg" => "操作失败:请刷新页面重试ERR002"));
+                }
+                /*释放内存资源*/
+                imagedestroy($source);
+                imagedestroy($new_image);
+        
+                return new JsonModel(array('result'=>true,'msg'=>"上传头像成功",'url'=>$arr['ava_filename']));
+            }else{
+                return  new ViewModel();
+            }
+        }catch (\Exception $e) {
+            return new JsonModel(array('result' => false,'msg' => '异常' . $e->getMessage()));
+        }
+    }
+}

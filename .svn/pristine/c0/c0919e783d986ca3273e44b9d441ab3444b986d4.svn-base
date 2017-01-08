@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<meta name="renderer" content="webkit">
+<!-- //360 6.X 以上可识别 -->
+<meta name="force-rendering" content="webkit">
+<!-- //其他双核可识别 -->
+<meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1"/>
+<script language="javascript">  
+/* 判断当前页面是否在iframe中  */
+if(top == self){window.top.location.href = "/admin"}  
+</script>  
+<title>所有用户</title>
+<meta name="keywords" content="">
+<meta name="description" content="">
+<link href="/css/bootstrap.min.css" rel="stylesheet">
+<link href="/css/font-awesome.min.css" rel="stylesheet">
+<link href="/css/common_css/animate.min.css" rel="stylesheet">
+<link href="/css/common_css/style.min.css" rel="stylesheet">
+<link href="/css/plugins/toastr/toastr.min.css" rel="stylesheet">
+<link href="/css/nxcms/ui.css" rel="stylesheet">
+<link href="/css/common_css/sweetalert.css" rel="stylesheet">
+<style>
+    /* 页面闪烁 */
+    [v-cloak]{display:none;}
+    .sexInfo{
+    position: relative;
+    right: -12px;
+    bottom: 0px;
+}
+</style>
+</head>
+<body class="gray-bg" v-cloak>
+    <div class="wrapper wrapper-content animated fadeInRight">
+        <div class="row">
+            <div class="col-sm-12">
+                <div class="ibox float-e-margins">
+                	<button @click="getAllUser" type="button" class="btn btn-sm btn-primary" v-if="btnPermisson['getUser']"><i class="fa fa-refresh"></i> 刷新</button>&nbsp;
+                    <button @click="addUserIframe" type="button" class="btn btn-sm btn-primary"><i class="fa fa-plus"></i> 添加用户</button>
+                    <div class="ibox-title">
+                        <h5>所有用户</h5>
+                        <div class="ibox-tools">
+                            <a v-if="btnPermisson['getUser']">
+                                <i class="fa fa-refresh" @click="getAllUser" ></i>
+                            </a>
+                        </div>
+                    </div>
+                    <div class="ibox-content">
+                        <div class="form-group form-inline">
+                           <div class="input-group col-sm-3 m-b-xs pull-left">
+                                <select id="batchOption" class="input-sm form-control">
+                                    <option value="-1">请选择批量操作</option>
+                                    <option value="0" v-if="btnPermisson['delUser']">批量删除</option>
+                                    <option value="1" v-if="btnPermisson['editUser']">批量设置角色</option>
+                                </select>
+                                <div class="input-group-btn">
+                                      <button type="button" class="btn btn-primary btn-sm" @click="batchOperation">应用操作</button>
+                                </div>
+                            </div>
+                            <div class="pull-right">
+                            	<select id="userRoleBatch" class="input-sm form-control" style="margin-bottom:5px">
+                            		<option value="-1">所有角色</option>
+                                	<option v-for="role in roleList" value="{{role.ROLE_ID}}" v-text="role.ROLE_NAME_CH+'(级别:'+role.ROLE_LEVEL+')'"></option>
+                           		</select>
+                           		<select id="userStatu" class="input-sm form-control" style="margin-bottom:5px">
+                            		<option value="-1">所有状态</option>
+                                	<option value="0">正常使用</option>
+                                    <option value="1">禁止访问(封禁)</option>
+                                    <option value="2">限制用户(禁言)</option>
+                                    <option value="3">等待验证邮件</option>
+                           		</select>
+                           		<select id="userSex" class="input-sm form-control" style="margin-bottom:5px">
+                            		<option value="-1">性别</option>
+                                	<option value="0">男</option>
+                                    <option value="1">女</option>
+                           		</select>
+                                <div class="input-group" style="margin:0 3px">
+                                    <input type="text" placeholder="搜索用户名,邮箱等" class="input-sm form-control" />
+                                    <div class="input-group-btn">
+                                    	<button type="button" class="btn btn-sm btn-primary"> 搜索</button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <table class="table table-striped table-bordered table-hover">
+                            <thead>
+                                <tr>
+                                    <th width='70'>
+                                        <input type="checkbox" v-model="isCheckAll" id="all">
+									    <label class="wcheck" for="all" @click='checkedAll'></label>
+                                    </th>
+                                    <th width='70'>头像</th>
+                                    <th>用户名</th>
+                                    <th>电子邮箱</th>
+                                    <th>角色</th>
+                                    <th>文章数量</th>
+                                    <th width="120">注册时间</th>
+                                    <th width="120">状态</th>
+                                    <th width="100">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr v-for="user in userList">
+                                    <td>
+                                        <input name="chk" type="checkbox"  v-model="user.check" id="{{user.userid}}">
+									    <label class="wcheck" for="{{user.userid}}"></label>
+                                    </td>
+                                    <td><image class="img-circle"  :src="user.userImgSrc" style="height:35px;width:35px" @click="lookHeadPic(user)"></image><span class="sexInfo"><i :class="{'fa fa-venus fa-lg text-danger':user.sex=='woman','fa fa-mars fa-lg text-success':user.sex=='man'}"></i></span></td>
+                                    <td  v-text="user.username"></td>
+                                    <td><a v-text="user.email"></a><br/>昵称:<a v-text="user.nickname"></a></td>
+                                    <td><a v-text="user.rolename"></a></td>
+                                    <td><a v-text="user.artnum"></a></td>
+                                    <td><a v-text="user.time.substring(2,16) "></a></td>
+                                    <td  v-text="user.statu == 0?'正常使用':(user.statu == 1?'禁止访问(封禁)':(user.statu == 2?'限制用户(禁言)':(user.statu == 3?'等待验证邮件':'异常')))"></td>
+                                    <td>
+                                        <a class="text-info" title="查看用户" @click=""><i class="fa fa-search"></i>&nbsp;</a>
+                                        <a class="text-primary" title="编辑用户" @click="editUser(user)" v-if="btnPermisson['editUser']"><i class="fa fa-pencil"></i>&nbsp;</a>
+                                        <a class="text-danger" title="删除用户" @click="deleteUser(user)" v-if="btnPermisson['delUser']"><i class="fa fa-trash-o"></i></a>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="editUser-modal" tabindex="-1" role="dialog" aria-labelledby="addTag-modal-Label">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">修改用户</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal m-t" id="signupForm" role="form">
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">昵称</label>
+                            <div class="col-sm-9">
+                                <input id="username" name="username" type="text" class="form-control" v-model = "editUserInfo.nickname"/>
+                            </div>
+                        </div>
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">用户邮箱</label>
+                            <div class="col-sm-9">
+                                <input id="email" name="email" type="text" class="form-control" v-model = "editUserInfo.email"/>
+                            </div> 
+                        </div>
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">密码</label>
+                            <div class="col-sm-9">
+                                <input id="password" name="password" class="form-control" type="password" placeholder="可留空不做修改" v-model = "editUserInfo.password"/>
+                            </div> 
+                        </div>
+                        <div class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">角色</label>
+                            <div class="col-sm-9">
+                                <select id="userRole" class="form-control input-s-sm inline" v-model = "editUserInfo.roleid">
+                                    <option v-for="role in roleList" value="{{role.ROLE_ID}}" v-text="role.ROLE_NAME_CH+'(级别:'+role.ROLE_LEVEL+')'"></option>
+                                </select>
+                            </div>
+                        </div>
+                        <div id="statuLable" class="form-group has-feedback">
+                            <label class="col-sm-2 control-label">状态</label>
+                            <div class="col-sm-9">
+                                <!-- 状态 0 正常使用  1禁止访问(封禁) 2限制用户(禁言)  3等待验证邮件-->
+                                <select id="statuSelect" class="form-control input-s-sm inline" v-model = "editUserInfo.statu">
+                                	<option value="0">正常使用</option>
+                                    <option value="1">禁止访问(封禁)</option>
+                                    <option value="2">限制用户(禁言)</option>
+                                    <option value="3">等待验证邮件</option>
+                                </select>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button id="saveButton" type="button" class="btn btn-sm btn-primary editBtn" @click="editUserConfirm">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="deleteModal" tabindex="-1" role="dialog" aria-labelledby="confirm-modal-Label">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">删除确认</h4>
+                </div>
+                <div class="modal-body">
+                    <h4 style="text-align:center" id="deleteMessage">确定删除该用户？</h4>
+                </div>
+                <div id="footerModal" class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button id="saveButton" type="button" class="btn btn-sm btn-primary editBtn" @click="deleteUserConfirm">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="modal fade" id="changeRolesModal" tabindex="-1" role="dialog" aria-hidden="true">
+        <div class="modal-dialog modal-sm">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal" aria-hidden="true">
+                        &times;
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">批量设置角色</h4>
+                </div>
+                <div class="modal-body">
+                    <h4 style="text-align:center" id="changeRolesMessage">将 <span style="color: red" v-text="userIdArr.length"></span> 个用户的角色替换为</h4>
+                    <div class="form-group">
+                        <div class="col-sm-12">
+                            <select id="changeUserRole" class="form-control input-s-sm inline">
+                                <option v-for="role in roleList" value="{{role.ROLE_ID}}" v-text="role.ROLE_NAME_CH+'(级别:'+role.ROLE_LEVEL+')'"></option>
+                            </select>
+                        </div>
+                    </div>
+                    <br/>
+                </div>
+                <div  class="modal-footer">
+                    <button type="button" class="btn btn-sm btn-default" data-dismiss="modal">
+                        <i class="fa fa-close"></i> 关闭
+                    </button>
+                    <button id="saveButton" type="button" class="btn btn-sm btn-primary editBtn" @click="changeBatchRolesConfirm">
+                        <i class="fa fa-save"></i> 提交
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<div class="modal fade" id="gallery-image-modal">
+	<div class="modal-dialog modal-sm">
+		<div class="modal-content previewPic">
+			<div class="modal-gallery-image">
+				<img class="img-responsive" />
+			</div>
+			<div class="modal-footer modal-gallery-top-controls">
+				<button type="button" class="btn btn-xs btn-secondary picRejectBtn" @click="rejectHeadPic" v-if="userinfo.userImgSrc!='/data/avatarResource/common/default.jpg' &&　btnPermisson['editUser']">驳回</button>
+				<button type="button" class="btn btn-xs btn-info originalPic" v-if="checkIfHeadpic(userinfo.userImgSrc)" @click="originalPic(userinfo.userImgSrc)">查看原图</button>
+				<button type="button" class="btn btn-xs btn-white picCloseBtn" data-dismiss="modal">关闭</button>
+			</div>
+		</div>
+	</div>
+</div>
+
+<!-- 全局js -->
+<script src="/js/common_js/jquery-2.1.1.min.js"></script>
+<script src="/js/common_js/bootstrap.min.js"></script>
+<script src="/js/plugins/validate/jquery.validate.min.js"></script>
+<script src="/js/plugins/validate/messages_zh.min.js"></script>
+<!-- vue.js -->
+<script src="/js/vue/vue.min.js"></script>
+<script src="/js/vue/vue-resource.min.js"></script>
+<script src="/js/plugins/toastr/toastr.min.js"></script>
+    <!--自定义js-->
+<script src="/js/view_js/usermgr/alluser.js"></script> 
+</body>
+</html>
